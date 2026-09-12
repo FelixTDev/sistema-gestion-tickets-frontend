@@ -22,7 +22,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers)
   headers.set('Accept', 'application/json')
   if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
-  const token = undefined
+  const token = getAccessToken()
   if (token) headers.set('Authorization', `Bearer ${token}`)
   const response = await fetch(`${baseUrl}${path}`, { ...init, headers })
   if (!response.ok) {
@@ -35,3 +35,4 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 export const apiClient = { get: <T>(path: string) => request<T>(path), post: <T>(path: string, body: unknown) => request<T>(path, { method: 'POST', body: JSON.stringify(body) }) }
+import { getAccessToken } from './auth'

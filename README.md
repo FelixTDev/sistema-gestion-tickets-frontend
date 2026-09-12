@@ -24,7 +24,15 @@ copy .env.example .env
 npm run dev
 ```
 
-Rutas base: inicio, login, registro, preguntas frecuentes, asistente, portal de cliente y panel interno. Las áreas protegidas usan una sesión mínima nula hasta que se implemente autenticación real.
+Rutas base: inicio, login, registro, preguntas frecuentes, asistente, portal de cliente y panel interno. La autenticación usa los endpoints `/auth/register`, `/auth/login`, `/auth/me` y `/auth/logout` del backend configurado en `VITE_API_BASE_URL`.
+
+## Flujo de autenticación
+
+El registro valida nombre, correo, teléfono opcional, contraseña y confirmación antes de enviar `POST /auth/register`. El login envía correo y contraseña a `POST /auth/login`; el token recibido se guarda únicamente en `sessionStorage` bajo `auth_token`. `sessionStorage` conserva la sesión durante la pestaña actual y se limpia al cerrarla; nunca se usa `localStorage` ni se guardan contraseñas.
+
+Al iniciar la aplicación, si existe un token se consulta `GET /auth/me`. Una respuesta 401 limpia la sesión local. El cierre de sesión intenta llamar `POST /auth/logout` y limpia siempre la sesión local, incluso si la llamada falla. No se implementan refresh tokens porque no forman parte del contrato actual.
+
+Las cuentas demo son ficticias y deben existir en el backend local; no se incluyen credenciales reales en el repositorio. El destino depende del rol: `CLIENTE` va a `/cliente`, `ASESOR` a `/panel/tickets` y `SUPERVISOR` a `/panel`.
 
 ## Pruebas y build
 
