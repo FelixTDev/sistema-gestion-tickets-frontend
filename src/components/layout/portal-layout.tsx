@@ -1,0 +1,2 @@
+import { Link, Outlet } from 'react-router-dom'
+export function PortalLayout() { return <div className="site-shell"><header className="topbar"><Link className="brand" to="/cliente"><span className="brand-mark">A</span><span>Atiende / Cliente</span></Link><nav aria-label="Navegación del cliente"><Link to="/cliente">Resumen</Link><Link to="/cliente/tickets">Mis tickets</Link><Link to="/">Salir</Link></nav></header><div className="academic-notice">Sesión de demostración · El backend validará los permisos</div><main className="page-container"><Outlet /></main></div> }

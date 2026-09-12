@@ -1,0 +1,4 @@
+export function LoadingState() { return <div className="state" role="status"><span className="spinner" aria-hidden="true" />Cargando información…</div> }
+export function ErrorState({ message = 'No fue posible cargar la información.' }: { message?: string }) { return <div className="state state-error" role="alert"><strong>Ocurrió un problema.</strong><span>{message}</span></div> }
+export function EmptyState({ title = 'Aún no hay información', message = 'Cuando exista actividad, aparecerá aquí.' }: { title?: string; message?: string }) { return <div className="state"><strong>{title}</strong><span>{message}</span></div> }
+export function AccessDenied() { return <div className="state state-error" role="alert"><strong>Acceso denegado</strong><span>Necesitas una sesión con el rol permitido para continuar.</span></div> }
