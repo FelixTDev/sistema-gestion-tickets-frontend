@@ -15,7 +15,7 @@ const registerSchema = z.object({ full_name: z.string().trim().min(1, 'El nombre
 const errorMessage = (error: unknown, conflict: string): string => error instanceof ApiError && error.status === 409 ? conflict : error instanceof ApiError && error.status === 422 ? 'Revisa los datos ingresados.' : 'No fue posible completar la solicitud. Inténtalo nuevamente.'
 type LoginPortal = 'client' | 'staff'
 
-function destinationFor(role: Role): string { if (role === 'CLIENTE') return '/cliente'; if (role === 'ASESOR') return '/panel/tickets'; return '/panel' }
+function destinationFor(role: Role): string { if (role === 'CLIENTE') return '/cliente'; if (role === 'ASESOR') return '/personal/tickets'; return '/personal' }
 function acceptsRole(portal: LoginPortal, role: Role): boolean { return portal === 'client' ? role === 'CLIENTE' : role === 'ASESOR' || role === 'SUPERVISOR' }
 
 function PortalMismatch({ portal }: { portal: LoginPortal }) {

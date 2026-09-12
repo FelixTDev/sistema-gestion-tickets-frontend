@@ -6,16 +6,19 @@ Frontend del prototipo académico independiente de orientación y gestión de ti
 
 ## Diseño y accesos
 
-La interfaz adopta un lenguaje institucional propio, sobrio y accesible, con azul profundo como color base y turquesa como acento. La web pública se centra en orientación, asistente simulado y seguimiento de tickets; no reproduce literalmente el sitio oficial.
+La interfaz adopta un lenguaje institucional propio, sobrio y accesible, con azul profundo como color base y turquesa como acento. La web pública se centra en orientación, asistente de atención y seguimiento de tickets; no reproduce literalmente el sitio oficial.
 
 - `/login`: acceso exclusivo para cuentas demo con rol `CLIENTE`.
 - `/registro`: alta exclusiva de cuentas demo de clientes.
 - `/personal/login`: acceso exclusivo para cuentas demo con rol `ASESOR` o `SUPERVISOR`.
 - `/cliente` y descendientes: portal protegido para `CLIENTE`.
-- `/panel/tickets` y descendientes: espacio protegido para `ASESOR` y `SUPERVISOR`.
-- `/panel` y `/panel/conocimiento`: espacio protegido para `SUPERVISOR`.
+- `/personal/tickets` y descendientes: espacio protegido para `ASESOR` y `SUPERVISOR`.
+- `/personal` y `/personal/conocimiento`: espacio protegido para `SUPERVISOR`.
+- `/panel/*`: rutas antiguas que redirigen con reemplazo de historial a su equivalente `/personal/*`.
+- `/preguntas-frecuentes`: FAQ públicas con búsqueda y filtro por categoría.
+- `/chat`: asistente disponible para visitantes y `CLIENTE`; los roles internos son redirigidos a su espacio oficial.
 
-El enlace de acceso para personal se muestra de forma discreta únicamente en el footer público. Los layouts público, de cliente y de personal son visual y funcionalmente distintos. El chatbot, los tickets y el dashboard continúan como superficies simuladas; esta etapa no implementa su lógica real.
+El enlace de acceso para personal se muestra de forma discreta únicamente en el footer público. Los layouts público, de cliente y de personal son visual y funcionalmente distintos. Los tickets y el dashboard continúan como superficies simuladas; esta etapa conecta las FAQ y el asistente, pero no convierte conversaciones en tickets.
 
 ## Requisitos
 
@@ -47,9 +50,22 @@ El registro valida nombre, correo, teléfono opcional, contraseña y confirmaci�
 
 Al iniciar la aplicación, si existe un token se consulta `GET /auth/me`. Una respuesta 401 limpia la sesión local. El cierre de sesión intenta llamar `POST /auth/logout` y limpia siempre la sesión local, incluso si la llamada falla. No se implementan refresh tokens porque no forman parte del contrato actual.
 
-Las cuentas demo son ficticias y deben existir en el backend local; no se incluyen credenciales reales en el repositorio. No ingrese claves, números de tarjeta, códigos, saldos ni información bancaria real. El destino depende del rol: `CLIENTE` va a `/cliente`, `ASESOR` a `/panel/tickets` y `SUPERVISOR` a `/panel`.
+Las cuentas demo son ficticias y deben existir en el backend local; no se incluyen credenciales reales en el repositorio. No ingrese claves, números de tarjeta, CVV, tokens, códigos, saldos ni información bancaria real. El destino depende del rol: `CLIENTE` va a `/cliente`, `ASESOR` a `/personal/tickets` y `SUPERVISOR` a `/personal`.
 
 Aunque ambos portales usan `POST /auth/login`, cada uno valida el rol devuelto. Si una cuenta intenta entrar por el portal incorrecto, la sesión y el token se eliminan, se explica el acceso correspondiente y se ofrece un enlace hacia él.
+
+## Preguntas frecuentes y chatbot
+
+La página de FAQ consume `GET /faqs` y `GET /categories`, excluye contenido inactivo y permite buscar localmente por pregunta o palabras clave. El asistente usa exclusivamente:
+
+- `POST /chat/conversations` para iniciar una conversación.
+- `GET /chat/conversations/{conversation_id}` para restaurarla.
+- `POST /chat/conversations/{conversation_id}/messages` para enviar consultas al motor de FAQ.
+- `POST /chat/conversations/{conversation_id}/link-user` para asociar una conversación anónima después del login de un cliente.
+
+Solo `chat_conversation_id` se guarda en `sessionStorage`, por lo que permanece durante la pestaña actual. Los mensajes se mantienen en memoria y se recuperan del backend; no se guardan en `localStorage`. Al aparecer una sesión `CLIENTE`, primero se intenta la asociación y después se actualiza la conversación, sin bloquear el login. Para `ASESOR` y `SUPERVISOR` el chatbot se oculta y no restaura, crea, asocia ni envía conversaciones.
+
+Cuando el backend devuelve `offers_ticket`, los visitantes reciben enlaces a login y registro, mientras que los clientes ven la preparación para una futura conversión. La llamada real de creación de tickets queda pendiente para la siguiente fase.
 
 ## Pruebas y build
 
@@ -75,4 +91,4 @@ src/
 └── main.tsx
 ```
 
-El cliente HTTP centralizado usa `fetch`, serializa JSON, envía el token mediante `Authorization: Bearer` y transforma errores al tipo `ApiError`. La autenticación ya está conectada; las funciones reales de chatbot, tickets y dashboard permanecen fuera del alcance actual.
+El cliente HTTP centralizado usa `fetch`, serializa JSON, envía el token mediante `Authorization: Bearer` y transforma errores al tipo `ApiError`. La autenticación, las FAQ y el chatbot ya están conectados; las funciones reales de tickets y dashboard permanecen fuera del alcance actual.

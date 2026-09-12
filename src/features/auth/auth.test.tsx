@@ -1,8 +1,10 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, useLocation } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { App } from '../../app/app-shell'
+import { createTestQueryClient } from '../../test/test-query-client'
 import { ClientLoginForm, RegisterForm } from './auth-forms'
 import { AuthProvider, useAuth } from './auth-provider'
 import { register, clearSession, logout } from './auth-service'
@@ -14,6 +16,8 @@ const supervisor = { ...client, role: 'SUPERVISOR' as const }
 
 function authForm(ui: React.ReactElement) { return render(<MemoryRouter><AuthProvider>{ui}</AuthProvider></MemoryRouter>) }
 function SessionProbe() { const { isLoading, user } = useAuth(); return <span>{isLoading ? 'loading' : user?.email ?? 'anonymous'}</span> }
+function LocationProbe() { const location = useLocation(); return <output data-testid="location">{location.pathname}</output> }
+function renderApp(initialEntries: string[]) { const queryClient = createTestQueryClient(); return render(<QueryClientProvider client={queryClient}><MemoryRouter initialEntries={initialEntries}><App /><LocationProbe /></MemoryRouter></QueryClientProvider>) }
 
 beforeEach(() => { sessionStorage.clear(); clearSession(); vi.restoreAllMocks() })
 
@@ -108,7 +112,7 @@ describe('servicio y ciclo de sesión', () => {
 describe('portales de acceso por rol', () => {
   it('acepta CLIENTE en /login y redirige a /cliente', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ access_token: 'token', token_type: 'bearer', user: client }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
-    render(<MemoryRouter initialEntries={['/login']}><App /></MemoryRouter>)
+    renderApp(['/login'])
     await userEvent.type(screen.getByLabelText(/correo/i), client.email)
     await userEvent.type(screen.getByLabelText(/contraseña/i), 'Password123')
     await userEvent.click(screen.getByRole('button', { name: /iniciar sesión/i }))
@@ -119,7 +123,7 @@ describe('portales de acceso por rol', () => {
     vi.spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: 'internal-token', token_type: 'bearer', user: internalUser }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
       .mockResolvedValueOnce(new Response(JSON.stringify({ message: 'Sesión cerrada correctamente' }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
-    render(<MemoryRouter initialEntries={['/login']}><App /></MemoryRouter>)
+    renderApp(['/login'])
     await userEvent.type(screen.getByLabelText(/correo/i), client.email)
     await userEvent.type(screen.getByLabelText(/contraseña/i), 'Password123')
     await userEvent.click(screen.getByRole('button', { name: /iniciar sesión/i }))
@@ -128,20 +132,21 @@ describe('portales de acceso por rol', () => {
     expect(sessionStorage.getItem('auth_token')).toBeNull()
   })
 
-  it.each([[advisor, /bandeja de tickets/i], [supervisor, /panel interno/i]])('acepta personal en /personal/login', async (internalUser, destination) => {
+  it.each([[advisor, /bandeja de tickets/i, '/personal/tickets'], [supervisor, /panel interno/i, '/personal']])('acepta personal en /personal/login', async (internalUser, destination, path) => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ access_token: 'staff-token', token_type: 'bearer', user: internalUser }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
-    render(<MemoryRouter initialEntries={['/personal/login']}><App /></MemoryRouter>)
+    renderApp(['/personal/login'])
     await userEvent.type(screen.getByLabelText(/correo/i), client.email)
     await userEvent.type(screen.getByLabelText(/contraseña/i), 'Password123')
     await userEvent.click(screen.getByRole('button', { name: /ingresar al portal interno/i }))
     expect(await screen.findByRole('heading', { name: destination })).toBeInTheDocument()
+    expect(screen.getByTestId('location')).toHaveTextContent(path)
   })
 
   it('rechaza CLIENTE en /personal/login y limpia la sesión', async () => {
     vi.spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: 'client-token', token_type: 'bearer', user: client }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
       .mockResolvedValueOnce(new Response(JSON.stringify({ message: 'Sesión cerrada correctamente' }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
-    render(<MemoryRouter initialEntries={['/personal/login']}><App /></MemoryRouter>)
+    renderApp(['/personal/login'])
     await userEvent.type(screen.getByLabelText(/correo/i), client.email)
     await userEvent.type(screen.getByLabelText(/contraseña/i), 'Password123')
     await userEvent.click(screen.getByRole('button', { name: /ingresar al portal interno/i }))
@@ -153,7 +158,28 @@ describe('portales de acceso por rol', () => {
   it('bloquea una ruta interna para un rol incorrecto', async () => {
     sessionStorage.setItem('auth_token', 'client-token')
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify(client), { status: 200, headers: { 'Content-Type': 'application/json' } }))
-    render(<MemoryRouter initialEntries={['/panel']}><AuthProvider><App /></AuthProvider></MemoryRouter>)
+    renderApp(['/panel'])
     expect(await screen.findByRole('alert')).toHaveTextContent(/acceso denegado/i)
+  })
+
+  it('asocia una conversación después del login CLIENTE sin bloquear la redirección', async () => {
+    sessionStorage.setItem('chat_conversation_id', 'conversation-1')
+    let resolveLink!: (response: Response) => void
+    const linkPromise = new Promise<Response>((resolve) => { resolveLink = resolve })
+    vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
+      const url = String(input)
+      if (url.endsWith('/auth/login')) return Promise.resolve(new Response(JSON.stringify({ access_token: 'token', token_type: 'bearer', user: client }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+      if (url.endsWith('/link-user')) return linkPromise
+      if (init?.method !== 'POST') return Promise.resolve(new Response(JSON.stringify({ id: 'conversation-1', user_id: null, status: 'ACTIVE', started_at: '2026-09-12', ended_at: null, messages: [] }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+      return Promise.resolve(new Response(JSON.stringify({ message: 'Unexpected' }), { status: 500, headers: { 'Content-Type': 'application/json' } }))
+    })
+    renderApp(['/login'])
+    await userEvent.type(screen.getByLabelText(/correo/i), client.email)
+    await userEvent.type(screen.getByLabelText(/contraseña/i), 'Password123')
+    await userEvent.click(screen.getByRole('button', { name: /iniciar sesión/i }))
+
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/cliente'))
+    resolveLink(new Response(JSON.stringify({ id: 'conversation-1', user_id: client.id, status: 'ACTIVE' }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+    await waitFor(() => expect(screen.getByRole('heading', { name: /tu espacio de atención/i })).toBeInTheDocument())
   })
 })
