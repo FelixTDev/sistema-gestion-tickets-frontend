@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from '../../app/app-shell'
-import { LoginForm, RegisterForm } from './auth-forms'
+import { ClientLoginForm, RegisterForm } from './auth-forms'
 import { AuthProvider, useAuth } from './auth-provider'
 import { register, clearSession, logout } from './auth-service'
 import { setAccessToken } from '../../lib/auth'
@@ -19,14 +19,14 @@ beforeEach(() => { sessionStorage.clear(); clearSession(); vi.restoreAllMocks() 
 
 describe('formularios de autenticación', () => {
   it('renderiza el formulario de login y valida el correo', async () => {
-    authForm(<LoginForm />)
-    expect(screen.getByRole('heading', { name: /inicia sesión/i })).toBeInTheDocument()
+    authForm(<ClientLoginForm />)
+    expect(screen.getByRole('heading', { name: /bienvenido/i })).toBeInTheDocument()
     fireEvent.submit(screen.getByRole('button', { name: /iniciar sesión/i }).closest('form')!)
     expect(await screen.findByText(/correo válido/i)).toBeInTheDocument()
   })
 
   it('valida la contraseña del login', async () => {
-    authForm(<LoginForm />)
+    authForm(<ClientLoginForm />)
     await userEvent.type(screen.getByLabelText(/correo/i), 'cliente@example.com')
     fireEvent.submit(screen.getByRole('button', { name: /iniciar sesión/i }).closest('form')!)
     expect(await screen.findByText(/contraseña es obligatoria/i)).toBeInTheDocument()
@@ -34,7 +34,7 @@ describe('formularios de autenticación', () => {
 
   it('hace login correctamente y guarda sesión en sessionStorage', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ access_token: 'jwt-test', token_type: 'bearer', user: client }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
-    authForm(<LoginForm />)
+    authForm(<ClientLoginForm />)
     await userEvent.type(screen.getByLabelText(/correo/i), client.email)
     await userEvent.type(screen.getByLabelText(/contraseña/i), 'Password123')
     await userEvent.click(screen.getByRole('button', { name: /iniciar sesión/i }))
@@ -45,7 +45,7 @@ describe('formularios de autenticación', () => {
 
   it('muestra un error genérico cuando el login es rechazado', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ message: 'Credenciales inválidas' }), { status: 401, headers: { 'Content-Type': 'application/json' } }))
-    authForm(<LoginForm />)
+    authForm(<ClientLoginForm />)
     await userEvent.type(screen.getByLabelText(/correo/i), client.email)
     await userEvent.type(screen.getByLabelText(/contraseña/i), 'Password123')
     await userEvent.click(screen.getByRole('button', { name: /iniciar sesión/i }))
@@ -105,14 +105,49 @@ describe('servicio y ciclo de sesión', () => {
   })
 })
 
-describe('redirecciones por rol', () => {
-  it.each([[client, '/cliente'], [advisor, '/panel/tickets'], [supervisor, '/panel']])('dirige %s a %s', async (user, path) => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ access_token: 'token', token_type: 'bearer', user }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
-    render(<MemoryRouter initialEntries={['/login']}><AuthProvider><App /></AuthProvider></MemoryRouter>)
+describe('portales de acceso por rol', () => {
+  it('acepta CLIENTE en /login y redirige a /cliente', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ access_token: 'token', token_type: 'bearer', user: client }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+    render(<MemoryRouter initialEntries={['/login']}><App /></MemoryRouter>)
     await userEvent.type(screen.getByLabelText(/correo/i), client.email)
     await userEvent.type(screen.getByLabelText(/contraseña/i), 'Password123')
     await userEvent.click(screen.getByRole('button', { name: /iniciar sesión/i }))
-    await waitFor(() => expect(screen.getByRole('heading', { name: path === '/cliente' ? /tu espacio de atención/i : path === '/panel/tickets' ? /bandeja de tickets/i : /panel interno/i })).toBeInTheDocument())
+    expect(await screen.findByRole('heading', { name: /tu espacio de atención/i })).toBeInTheDocument()
+  })
+
+  it.each([advisor, supervisor])('rechaza una cuenta interna en /login y limpia la sesión', async (internalUser) => {
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: 'internal-token', token_type: 'bearer', user: internalUser }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ message: 'Sesión cerrada correctamente' }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+    render(<MemoryRouter initialEntries={['/login']}><App /></MemoryRouter>)
+    await userEvent.type(screen.getByLabelText(/correo/i), client.email)
+    await userEvent.type(screen.getByLabelText(/contraseña/i), 'Password123')
+    await userEvent.click(screen.getByRole('button', { name: /iniciar sesión/i }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(/cuenta pertenece al acceso interno/i)
+    expect(screen.getByRole('link', { name: /ir al acceso para personal/i })).toHaveAttribute('href', '/personal/login')
+    expect(sessionStorage.getItem('auth_token')).toBeNull()
+  })
+
+  it.each([[advisor, /bandeja de tickets/i], [supervisor, /panel interno/i]])('acepta personal en /personal/login', async (internalUser, destination) => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ access_token: 'staff-token', token_type: 'bearer', user: internalUser }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+    render(<MemoryRouter initialEntries={['/personal/login']}><App /></MemoryRouter>)
+    await userEvent.type(screen.getByLabelText(/correo/i), client.email)
+    await userEvent.type(screen.getByLabelText(/contraseña/i), 'Password123')
+    await userEvent.click(screen.getByRole('button', { name: /ingresar al portal interno/i }))
+    expect(await screen.findByRole('heading', { name: destination })).toBeInTheDocument()
+  })
+
+  it('rechaza CLIENTE en /personal/login y limpia la sesión', async () => {
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: 'client-token', token_type: 'bearer', user: client }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ message: 'Sesión cerrada correctamente' }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+    render(<MemoryRouter initialEntries={['/personal/login']}><App /></MemoryRouter>)
+    await userEvent.type(screen.getByLabelText(/correo/i), client.email)
+    await userEvent.type(screen.getByLabelText(/contraseña/i), 'Password123')
+    await userEvent.click(screen.getByRole('button', { name: /ingresar al portal interno/i }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(/utilizar el portal de clientes/i)
+    expect(screen.getByRole('link', { name: /ir al acceso de clientes/i })).toHaveAttribute('href', '/login')
+    expect(sessionStorage.getItem('auth_token')).toBeNull()
   })
 
   it('bloquea una ruta interna para un rol incorrecto', async () => {

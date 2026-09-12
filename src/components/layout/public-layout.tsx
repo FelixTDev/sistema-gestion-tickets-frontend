@@ -1,2 +1,7 @@
-import { Link, Outlet } from 'react-router-dom'
-export function PublicLayout() { return <div className="site-shell"><header className="topbar"><Link className="brand" to="/"><span className="brand-mark">A</span><span>Atiende</span></Link><nav aria-label="Navegación principal"><Link to="/preguntas-frecuentes">Preguntas frecuentes</Link><Link to="/chat">Asistente</Link><Link className="button button-small" to="/login">Iniciar sesión</Link></nav></header><div className="academic-notice">Prototipo académico independiente · No es un canal bancario oficial</div><main className="page-container"><Outlet /></main><footer>Atiende · Prototipo académico para gestión de consultas</footer></div> }
+import { Outlet } from 'react-router-dom'
+import { AcademicDisclaimer } from './academic-disclaimer'
+import { BrandHeader } from './brand-header'
+import { Footer } from './footer'
+import { PublicNavigation } from './public-navigation'
+
+export function PublicLayout() { return <div className="site-shell public-shell"><header className="public-header"><div className="header-inner"><BrandHeader /><PublicNavigation /></div></header><AcademicDisclaimer /><main><Outlet /></main><Footer /></div> }
