@@ -55,6 +55,24 @@ describe('aplicación base', () => {
     expect(screen.getByRole('heading', { name: /bienvenido/i })).toBeInTheDocument()
   })
 
+  it('protege la creación de tickets sin sesión', () => {
+    renderApp(['/cliente/tickets/nuevo'])
+    expect(screen.getByTestId('location')).toHaveTextContent('/login')
+    expect(screen.getByRole('heading', { name: /bienvenido/i })).toBeInTheDocument()
+  })
+
+  it.each(['ASESOR', 'SUPERVISOR'] as const)('deniega la creación de tickets al rol %s', (role) => {
+    setRole(role)
+    renderApp(['/cliente/tickets/nuevo'])
+    expect(screen.getByRole('alert')).toHaveTextContent(/acceso denegado/i)
+  })
+
+  it('incluye el acceso a crear ticket en la navegación del cliente', () => {
+    setRole('CLIENTE')
+    renderApp(['/cliente/tickets/nuevo'])
+    expect(within(screen.getByRole('navigation', { name: /navegación del cliente/i })).getByRole('link', { name: /crear ticket/i })).toHaveAttribute('href', '/cliente/tickets/nuevo')
+  })
+
   it('redirige las rutas internas al acceso de personal sin sesión', () => {
     renderApp(['/personal/tickets'])
     expect(screen.getByRole('heading', { name: /acceso para personal/i })).toBeInTheDocument()

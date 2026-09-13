@@ -30,7 +30,7 @@ export function ConversationPanel({ onCreateTicket }: { onCreateTicket?: () => v
     {!chatbot.isRestoring && !hasMessages && !chatbot.error && <div className="conversation-empty"><p>Puedes iniciar una nueva consulta.</p><span>Ejemplos: cuentas, tarjetas o banca digital.</span></div>}
     {hasMessages && <MessageList messages={chatbot.conversation?.messages ?? []} />}
     {chatbot.offersTicket && (user?.role === 'CLIENTE'
-      ? <div className="ticket-offer" role="status"><strong>Esta consulta puede convertirse en un ticket.</strong><p>La creación real se habilitará en la siguiente fase.</p>{onCreateTicket && <button className="button button-small" type="button" onClick={onCreateTicket}>Crear ticket</button>}</div>
+      ? <div className="ticket-offer" role="status"><strong>Esta consulta puede convertirse en un ticket.</strong><p>Completa los datos de la solicitud para darle seguimiento.</p>{onCreateTicket && <button className="button button-small" type="button" onClick={onCreateTicket}>Crear ticket</button>}</div>
       : <div className="ticket-offer" role="status"><strong>¿Necesitas seguimiento?</strong><p>Inicia sesión o crea una cuenta demo para continuar posteriormente con un ticket.</p><div><Link className="button button-small" to="/login">Iniciar sesión</Link><Link className="button button-outline button-small" to="/registro">Registrarse</Link></div></div>)}
     <form className="conversation-form" onSubmit={submit} noValidate>
       <label htmlFor="chatbot-message">Escribe tu consulta</label>

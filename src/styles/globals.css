@@ -237,6 +237,50 @@ code { padding: .15rem .35rem; border-radius: .3rem; background: #e6f1f2; font-s
 .ticket-offer > div { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .conversation-panel > .state { margin: var(--space-4); }
 
+.page-heading-actions, .ticket-detail-heading, .dashboard-recent-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--space-5); }
+.client-dashboard-actions { margin-block: var(--space-8); display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.client-dashboard-stats { margin-bottom: var(--space-10); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); }
+.client-dashboard-stats .card { padding: var(--space-6); }
+.client-dashboard-stats strong { display: block; margin-top: var(--space-2); color: var(--color-primary-900); font-size: 2rem; }
+.ticket-list { margin-top: var(--space-6); display: grid; gap: var(--space-4); }
+.ticket-card { padding: var(--space-5); display: grid; gap: var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: white; box-shadow: var(--shadow-sm); }
+.ticket-card-topline, .ticket-card-badges, .ticket-card-meta, .ticket-badge-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+.ticket-card-topline { justify-content: space-between; }
+.ticket-card time, .ticket-card-meta { color: var(--color-muted); font-size: .78rem; }
+.ticket-card h2 { margin: 0; font-size: 1.2rem; }
+.ticket-badge { padding: .3rem .6rem; border-radius: 2rem; color: var(--color-primary-800); background: var(--color-surface-muted); font-size: .7rem; font-weight: 800; }
+.ticket-status-nuevo, .ticket-priority-media { color: var(--color-info); background: var(--color-info-soft); }
+.ticket-status-en-proceso, .ticket-status-asignado, .ticket-priority-alta { color: var(--color-warning); background: var(--color-warning-soft); }
+.ticket-status-resuelto, .ticket-status-cerrado, .ticket-priority-baja { color: var(--color-success); background: var(--color-success-soft); }
+.ticket-status-cancelado, .ticket-priority-urgente { color: var(--color-error); background: var(--color-error-soft); }
+.ticket-form { max-width: 48rem; padding: var(--space-6); }
+.ticket-form select, .ticket-form textarea, .ticket-comment-form textarea { width: 100%; padding: .75rem .9rem; border: 1px solid #b9c9d1; border-radius: var(--radius-sm); color: var(--color-ink); background: white; }
+.ticket-form select { min-height: 3rem; }
+.ticket-form textarea, .ticket-comment-form textarea { resize: vertical; }
+.ticket-form [aria-invalid="true"], .ticket-comment-form [aria-invalid="true"] { border-color: var(--color-error); }
+.ticket-conversation-context { max-width: 48rem; margin-block: var(--space-8); }
+.ticket-conversation-context .conversation-messages { border: 1px solid var(--color-border); border-radius: var(--radius-md); }
+.ticket-detail-heading { margin-bottom: var(--space-8); }
+.ticket-detail-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(16rem, 1fr); gap: var(--space-5); }
+.ticket-detail-main, .ticket-detail-meta { padding: var(--space-6); }
+.ticket-detail-main p { white-space: pre-wrap; }
+.ticket-detail-meta dl { margin: 0; display: grid; gap: var(--space-4); }
+.ticket-detail-meta dl > div { padding-bottom: var(--space-3); border-bottom: 1px solid var(--color-border); }
+.ticket-detail-meta dt { color: var(--color-muted); font-size: .72rem; font-weight: 750; text-transform: uppercase; }
+.ticket-detail-meta dd { margin: .3rem 0 0; overflow-wrap: anywhere; }
+.ticket-history, .ticket-comments { margin-top: var(--space-10); }
+.ticket-history-list { margin: var(--space-6) 0 0; padding: 0; display: grid; list-style: none; }
+.ticket-history-list li { position: relative; padding: 0 0 var(--space-6) var(--space-8); border-left: 2px solid var(--color-border); }
+.ticket-history-list li:last-child { padding-bottom: 0; border-color: transparent; }
+.ticket-history-marker { position: absolute; left: -.42rem; top: .15rem; width: .7rem; height: .7rem; border: 2px solid white; border-radius: 50%; background: var(--color-accent-600); box-shadow: 0 0 0 2px var(--color-accent-100); }
+.ticket-history-list li > div { display: grid; gap: .2rem; }
+.ticket-history-list time, .ticket-history-list small, .ticket-comments-list time, .ticket-comments-note { color: var(--color-muted); font-size: .76rem; }
+.ticket-comments-note { max-width: 48rem; }
+.ticket-comments-list { max-width: 48rem; padding: 0; display: grid; gap: var(--space-3); list-style: none; }
+.ticket-comments-list li { padding: var(--space-4); border-left: 3px solid var(--color-accent-500); border-radius: var(--radius-sm); background: white; }
+.ticket-comments-list p { margin: 0 0 var(--space-2); white-space: pre-wrap; }
+.ticket-comment-form { max-width: 48rem; }
+
 .chatbot-widget { position: fixed; z-index: 40; right: max(1rem, calc((100vw - var(--content-width)) / 2)); bottom: var(--space-5); }
 .chatbot-launcher { min-height: 3.2rem; padding: .65rem 1rem; display: flex; align-items: center; gap: .55rem; border: 0; border-radius: 2rem; color: white; background: var(--color-accent-600); box-shadow: var(--shadow-lg); cursor: pointer; font-weight: 800; }
 .chatbot-launcher > span:first-child { width: 1.8rem; height: 1.8rem; display: grid; place-items: center; border-radius: 50%; color: var(--color-primary-900); background: white; }
@@ -308,6 +352,9 @@ code { padding: .15rem .35rem; border-radius: .3rem; background: #e6f1f2; font-s
   .chatbot-launcher { min-height: 3rem; }
   .conversation-form { grid-template-columns: 1fr; }
   .conversation-form .button { width: 100%; }
+  .page-heading-actions, .ticket-detail-heading { align-items: flex-start; flex-direction: column; }
+  .client-dashboard-stats, .ticket-detail-grid { grid-template-columns: 1fr; }
+  .ticket-form { padding: var(--space-4); }
   .confirmation-actions { flex-direction: column-reverse; }
   .confirmation-actions .button { width: 100%; }
 }

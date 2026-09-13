@@ -29,6 +29,7 @@ interface ChatbotContextValue {
   setDraft: (value: string) => void
   sendMessage: () => Promise<void>
   startNewConversation: () => Promise<void>
+  clearConversationAfterTicket: (conversationId: string) => void
   retry: () => void
 }
 
@@ -137,6 +138,10 @@ export function ChatbotProvider({ children }: { children: ReactNode }) {
     catch { setOperationError('No pudimos iniciar una nueva conversación.') }
   }
 
+  function clearConversationAfterTicket(convertedConversationId: string): void {
+    if (conversationId === convertedConversationId) clearCurrentConversation()
+  }
+
   const conversation = conversationId ? queryClient.getQueryData<ConversationRead>(conversationQueryKey(conversationId)) ?? conversationQuery.data ?? null : null
   const error = operationError ?? (conversationQuery.isError && !isUnavailableError(conversationQuery.error) ? 'No pudimos recuperar la conversación.' : null)
   const value = useMemo<ChatbotContextValue>(() => ({
@@ -144,7 +149,7 @@ export function ChatbotProvider({ children }: { children: ReactNode }) {
     isRestoring: conversationQuery.isLoading || isLinking,
     isCreating: createMutation.isPending,
     isSending: sendMutation.isPending,
-    offersTicket, resolved, canUseChatbot, setDraft, sendMessage, startNewConversation,
+    offersTicket, resolved, canUseChatbot, setDraft, sendMessage, startNewConversation, clearConversationAfterTicket,
     retry: () => { setOperationError(null); void conversationQuery.refetch() },
   }), [canUseChatbot, conversation, conversationQuery, createMutation.isPending, draft, error, isLinking, offersTicket, resolved, sendMutation.isPending, validationError])
 

@@ -7,10 +7,12 @@ import { AccessDenied } from '../components/ui/states'
 import { useAuth } from '../features/auth/auth-provider'
 import { ChatPage } from '../features/chatbot/pages/chat-page'
 import { FaqPage } from '../features/faqs/pages/faq-page'
+import { ClientDashboardPage } from '../features/tickets/pages/client-dashboard-page'
+import { ClientTicketsPage } from '../features/tickets/pages/client-tickets-page'
+import { ClientTicketCreatePage } from '../features/tickets/pages/client-ticket-create-page'
+import { ClientTicketDetailPage } from '../features/tickets/pages/client-ticket-detail-page'
 import { hasRole } from '../lib/auth'
 import {
-  ClientHomePage,
-  ClientTicketsPage,
   HomePage,
   KnowledgePage,
   LoginPage,
@@ -20,7 +22,6 @@ import {
   PanelTicketsPage,
   RegisterPage,
   StaffLoginPage,
-  TicketDetailPage,
 } from '../pages/base-pages'
 import type { Role } from '../types/auth'
 
@@ -31,12 +32,12 @@ function ProtectedRoute({ roles, children }: { roles: Role[]; children: ReactNod
   return hasRole(session, roles) ? children : <AccessDenied />
 }
 
-function ChatRoute() {
+function ChatRoute({ onCreateTicket }: { onCreateTicket?: () => void }) {
   const { user, isLoading } = useAuth()
   if (isLoading) return <div className="state" role="status">Validando sesión…</div>
   if (user?.role === 'ASESOR') return <Navigate to="/personal/tickets" replace />
   if (user?.role === 'SUPERVISOR') return <Navigate to="/personal" replace />
-  return <ChatPage />
+  return <ChatPage onCreateTicket={onCreateTicket} />
 }
 
 function LegacyPanelRedirect() {
@@ -44,7 +45,7 @@ function LegacyPanelRedirect() {
   return <Navigate to={`${location.pathname.replace(/^\/panel/, '/personal')}${location.search}${location.hash}`} replace />
 }
 
-export function AppRouter() {
+export function AppRouter({ onCreateTicket }: { onCreateTicket?: () => void }) {
   return <Routes>
     <Route element={<PublicLayout />}>
       <Route path="/" element={<HomePage />} />
@@ -52,12 +53,13 @@ export function AppRouter() {
       <Route path="/registro" element={<RegisterPage />} />
       <Route path="/personal/login" element={<StaffLoginPage />} />
       <Route path="/preguntas-frecuentes" element={<FaqPage />} />
-      <Route path="/chat" element={<ChatRoute />} />
+      <Route path="/chat" element={<ChatRoute onCreateTicket={onCreateTicket} />} />
     </Route>
     <Route element={<ClientLayout />}>
-      <Route path="/cliente" element={<ProtectedRoute roles={['CLIENTE']}><ClientHomePage /></ProtectedRoute>} />
+      <Route path="/cliente" element={<ProtectedRoute roles={['CLIENTE']}><ClientDashboardPage /></ProtectedRoute>} />
       <Route path="/cliente/tickets" element={<ProtectedRoute roles={['CLIENTE']}><ClientTicketsPage /></ProtectedRoute>} />
-      <Route path="/cliente/tickets/:ticketId" element={<ProtectedRoute roles={['CLIENTE']}><TicketDetailPage /></ProtectedRoute>} />
+      <Route path="/cliente/tickets/nuevo" element={<ProtectedRoute roles={['CLIENTE']}><ClientTicketCreatePage /></ProtectedRoute>} />
+      <Route path="/cliente/tickets/:ticketId" element={<ProtectedRoute roles={['CLIENTE']}><ClientTicketDetailPage /></ProtectedRoute>} />
     </Route>
     <Route element={<StaffLayout />}>
       <Route path="/personal" element={<ProtectedRoute roles={['SUPERVISOR']}><PanelHomePage /></ProtectedRoute>} />

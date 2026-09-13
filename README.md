@@ -12,13 +12,16 @@ La interfaz adopta un lenguaje institucional propio, sobrio y accesible, con azu
 - `/registro`: alta exclusiva de cuentas demo de clientes.
 - `/personal/login`: acceso exclusivo para cuentas demo con rol `ASESOR` o `SUPERVISOR`.
 - `/cliente` y descendientes: portal protegido para `CLIENTE`.
+- `/cliente/tickets`: bandeja de tickets del cliente autenticado.
+- `/cliente/tickets/nuevo`: creación manual o conversión de una conversación del asistente.
+- `/cliente/tickets/:ticketId`: detalle, historial y comentarios permitidos del ticket.
 - `/personal/tickets` y descendientes: espacio protegido para `ASESOR` y `SUPERVISOR`.
 - `/personal` y `/personal/conocimiento`: espacio protegido para `SUPERVISOR`.
 - `/panel/*`: rutas antiguas que redirigen con reemplazo de historial a su equivalente `/personal/*`.
 - `/preguntas-frecuentes`: FAQ públicas con búsqueda y filtro por categoría.
 - `/chat`: asistente disponible para visitantes y `CLIENTE`; los roles internos son redirigidos a su espacio oficial.
 
-El enlace de acceso para personal se muestra de forma discreta únicamente en el footer público. Los layouts público, de cliente y de personal son visual y funcionalmente distintos. Los tickets y el dashboard continúan como superficies simuladas; esta etapa conecta las FAQ y el asistente, pero no convierte conversaciones en tickets.
+El enlace de acceso para personal se muestra de forma discreta únicamente en el footer público. Los layouts público, de cliente y de personal son visual y funcionalmente distintos. El dashboard y el portal de tickets de cliente consumen la API real; las superficies operativas de personal continúan fuera del alcance de esta fase.
 
 ## Requisitos
 
@@ -65,7 +68,19 @@ La página de FAQ consume `GET /faqs` y `GET /categories`, excluye contenido ina
 
 Solo `chat_conversation_id` se guarda en `sessionStorage`, por lo que permanece durante la pestaña actual. Los mensajes se mantienen en memoria y se recuperan del backend; no se guardan en `localStorage`. Al aparecer una sesión `CLIENTE`, primero se intenta la asociación y después se actualiza la conversación, sin bloquear el login. Para `ASESOR` y `SUPERVISOR` el chatbot se oculta y no restaura, crea, asocia ni envía conversaciones.
 
-Cuando el backend devuelve `offers_ticket`, los visitantes reciben enlaces a login y registro, mientras que los clientes ven la preparación para una futura conversión. La llamada real de creación de tickets queda pendiente para la siguiente fase.
+Cuando el backend devuelve `offers_ticket`, los visitantes reciben enlaces a login y registro, mientras que los clientes pueden continuar a la creación del ticket conservando el `conversationId`. La conversión usa exclusivamente `POST /chat/conversations/{conversation_id}/convert-to-ticket`; nunca crea además un ticket manual. El identificador de conversación se conserva si hay un error y solo se elimina tras recibir el ticket creado correctamente.
+
+## Portal de tickets del cliente
+
+El portal usa únicamente operaciones autorizadas para `CLIENTE`:
+
+- `GET /tickets/mine` para el dashboard y la bandeja propia.
+- `POST /tickets` para una solicitud manual.
+- `GET /tickets/{ticket_id}` y `GET /tickets/{ticket_id}/history` para detalle y trazabilidad.
+- `POST /tickets/{ticket_id}/comments` para añadir comentarios cuando el ticket no está `CERRADO` ni `CANCELADO`.
+- `POST /chat/conversations/{conversation_id}/convert-to-ticket` para convertir una conversación no resuelta.
+
+El cliente no recibe controles para cerrar, reabrir, cancelar, asignar o cambiar el estado: esas transiciones corresponden al personal según el backend. El contrato actual tampoco ofrece un endpoint para leer el contenido de comentarios anteriores. Por ello, la pantalla muestra el historial persistente y únicamente los comentarios creados durante su montaje actual, sin inventar datos ni una operación GET inexistente.
 
 ## Pruebas y build
 
@@ -91,4 +106,4 @@ src/
 └── main.tsx
 ```
 
-El cliente HTTP centralizado usa `fetch`, serializa JSON, envía el token mediante `Authorization: Bearer` y transforma errores al tipo `ApiError`. La autenticación, las FAQ y el chatbot ya están conectados; las funciones reales de tickets y dashboard permanecen fuera del alcance actual.
+El cliente HTTP centralizado usa `fetch`, serializa JSON, envía el token mediante `Authorization: Bearer` y transforma errores al tipo `ApiError`. La autenticación, las FAQ, el chatbot y el portal de tickets de cliente están conectados. La bandeja operativa, asignación, transiciones de estado, métricas y dashboard real del personal quedan para la próxima fase.

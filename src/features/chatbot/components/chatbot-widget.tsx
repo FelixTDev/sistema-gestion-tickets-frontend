@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom'
 import { useChatbot } from '../chatbot-provider'
 import { ConversationPanel } from './conversation-panel'
 
-export function ChatbotWidget() {
+export function ChatbotWidget({ onCreateTicket }: { onCreateTicket?: () => void }) {
   const { pathname } = useLocation()
   const { canUseChatbot } = useChatbot()
   const [isOpen, setIsOpen] = useState(false)
@@ -39,7 +39,7 @@ export function ChatbotWidget() {
     </button>
     {isOpen && <div ref={dialogRef} id="chatbot-dialog" className="chatbot-dialog" role="dialog" aria-modal="true" aria-label="Asistente de atención" onKeyDown={handleKeyDown}>
       <div className="chatbot-dialog-header"><strong>Asistente de atención</strong><button type="button" aria-label="Cerrar asistente de atención" onClick={close}>×</button></div>
-      <ConversationPanel />
+      <ConversationPanel onCreateTicket={onCreateTicket} />
     </div>}
   </div>
 }

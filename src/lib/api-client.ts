@@ -1,4 +1,4 @@
-export type ApiErrorPayload = { code?: string; message?: string; details?: unknown; request_id?: string }
+export type ApiErrorPayload = { code?: string; message?: string; detail?: unknown; details?: unknown; request_id?: string }
 
 export class ApiError extends Error {
   readonly status: number
@@ -7,7 +7,7 @@ export class ApiError extends Error {
   readonly requestId?: string
 
   constructor(status: number, payload: ApiErrorPayload) {
-    super(payload.message ?? 'No fue posible completar la solicitud.')
+    super(payload.message ?? (typeof payload.detail === 'string' ? payload.detail : 'No fue posible completar la solicitud.'))
     this.name = 'ApiError'
     this.status = status
     this.code = payload.code ?? 'HTTP_ERROR'
