@@ -1,5 +1,6 @@
 import { apiClient } from '../../../lib/api-client'
-import type { CommentCreate, CommentRead, HistoryRead, ReasonRequest, TicketCreate, TicketListFilters, TicketRead, TicketStatusChange } from '../types/ticket-types'
+import type { CommentCreate, CommentRead, HistoryRead, ReasonRequest, TicketCreate, TicketListFilters, TicketRead, TicketStatusChange, AssignmentCreate } from '../types/ticket-types'
+import type { AuthUser } from '../../../types/auth'
 
 export function listMyTickets(): Promise<TicketRead[]> {
   return apiClient.get<TicketRead[]>('/tickets/mine')
@@ -50,6 +51,14 @@ export function reopenTicket(ticketId: string, data: ReasonRequest): Promise<Tic
 
 export function cancelTicket(ticketId: string, data: ReasonRequest): Promise<TicketRead> {
   return apiClient.post<TicketRead>(`/tickets/${ticketId}/cancel`, data)
+}
+
+export function listAdvisors(): Promise<AuthUser[]> {
+  return apiClient.get<AuthUser[]>('/users/advisors')
+}
+
+export function assignTicket(ticketId: string, data: AssignmentCreate): Promise<TicketRead> {
+  return apiClient.post<TicketRead>(`/tickets/${ticketId}/assignments`, data)
 }
 
 export function convertConversationToTicket(conversationId: string, data: TicketCreate): Promise<TicketRead> {

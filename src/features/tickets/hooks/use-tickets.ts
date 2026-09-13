@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { addTicketComment, cancelTicket, changeTicketStatus, closeTicket, convertConversationToTicket, createTicket, getTicket, getTicketComments, getTicketHistory, listMyTickets, listTickets, reopenTicket } from '../api/ticket-api'
+import { addTicketComment, assignTicket, cancelTicket, changeTicketStatus, closeTicket, convertConversationToTicket, createTicket, getTicket, getTicketComments, getTicketHistory, listAdvisors, listMyTickets, listTickets, reopenTicket } from '../api/ticket-api'
 import type { CommentCreate, ReasonRequest, TicketCreate, TicketListFilters, TicketStatusChange, TicketRead } from '../types/ticket-types'
 
 export const ticketsQueryKey = ['client-tickets'] as const
@@ -27,6 +27,9 @@ export function useTicketComments(ticketId: string) {
 export function useOperationalTickets(filters: TicketListFilters) {
   return useQuery({ queryKey: operationalTicketsQueryKey(filters), queryFn: () => listTickets(filters), retry: false })
 }
+
+export const advisorsQueryKey = ['advisors'] as const
+export function useAdvisors(enabled = true) { return useQuery({ queryKey: advisorsQueryKey, queryFn: listAdvisors, retry: false, enabled }) }
 
 export function useCreateTicketMutation() {
   const queryClient = useQueryClient()
@@ -80,4 +83,8 @@ export function useReopenTicketMutation(ticketId: string) {
 
 export function useCancelTicketMutation(ticketId: string) {
   return useTicketOperation((data: ReasonRequest) => cancelTicket(ticketId, data))
+}
+
+export function useAssignTicketMutation(ticketId: string) {
+  return useTicketOperation((data: { advisor_id: string }) => assignTicket(ticketId, data))
 }

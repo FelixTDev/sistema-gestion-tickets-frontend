@@ -85,7 +85,15 @@ El cliente no recibe controles para cerrar, reabrir, cancelar, asignar o cambiar
 
 ## Espacio operativo de personal
 
-La bandeja usa `GET /tickets` con los filtros opcionales `status`, `category_id`, `priority`, `created_from` y `created_to`. El detalle reutiliza historial y comentarios persistentes. `ASESOR` puede cambiar estado, cerrar o reabrir tickets asignados a su usuario; `SUPERVISOR` puede operar globalmente y cancelar con motivo. Las acciones respetan las transiciones y contratos del backend, muestran confirmación y mensajes genéricos para errores 401, 403, 404, 409 y 422. No se añadió selector de asignación porque el backend no ofrece un endpoint de asesores. El dashboard supervisor, reportes, paginación y conversión a ticket quedan para fases posteriores.
+La bandeja usa `GET /tickets` con los filtros opcionales `status`, `category_id`, `priority`, `created_from` y `created_to`. El detalle reutiliza historial y comentarios persistentes. `ASESOR` puede cambiar estado, cerrar o reabrir tickets asignados a su usuario; `SUPERVISOR` puede operar globalmente y cancelar con motivo. Las acciones respetan las transiciones y contratos del backend, muestran confirmación y mensajes genéricos para errores 401, 403, 404, 409 y 422. El dashboard supervisor y los reportes están conectados; la paginación y conversión a ticket quedan para fases posteriores.
+
+## Dashboard y reportes de supervisión
+
+`/personal` está disponible exclusivamente para `SUPERVISOR`; un `ASESOR` es redirigido a `/personal/tickets`. El dashboard consume `GET /reports/summary`, `GET /reports/by-status`, `GET /reports/by-category`, `GET /reports/by-priority` y `GET /reports/resolution-time`. Los reportes usan los filtros reales `from`, `to`, `category_id`, `status` y `priority`, y muestran tarjetas, tablas y barras CSS accesibles.
+
+La asignación consume `GET /users/advisors` y muestra únicamente usuarios con rol `ASESOR` en el selector. La confirmación envía `POST /tickets/{ticket_id}/assignments` con `{ "advisor_id": "..." }`; no permite introducir IDs manualmente y solo está disponible para `SUPERVISOR`.
+
+El backend actual no expone `page`, `page_size`, `total` ni un contrato equivalente, por lo que la bandeja no simula paginación ni muestra controles ficticios. La paginación y el dashboard avanzado quedan preparados para una futura integración.
 
 ## Pruebas y build
 
