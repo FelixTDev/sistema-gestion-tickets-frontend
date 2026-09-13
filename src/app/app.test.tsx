@@ -73,7 +73,9 @@ describe('aplicación base', () => {
   it('incluye el acceso a crear ticket en la navegación del cliente', () => {
     setRole('CLIENTE')
     renderApp(['/cliente/tickets/nuevo'])
-    expect(within(screen.getByRole('navigation', { name: /navegación del cliente/i })).getByRole('link', { name: /crear ticket/i })).toHaveAttribute('href', '/cliente/tickets/nuevo')
+    const navigation = within(screen.getByRole('navigation', { name: /navegación del cliente/i }))
+    expect(navigation.getByRole('link', { name: /crear ticket/i })).toHaveAttribute('href', '/cliente/tickets/nuevo')
+    expect(navigation.getByRole('link', { name: /sitio público/i })).toHaveAttribute('href', '/')
   })
 
   it('redirige las rutas internas al acceso de personal sin sesión', () => {
