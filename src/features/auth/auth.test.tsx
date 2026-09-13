@@ -155,11 +155,11 @@ describe('portales de acceso por rol', () => {
     expect(sessionStorage.getItem('auth_token')).toBeNull()
   })
 
-  it('bloquea una ruta interna para un rol incorrecto', async () => {
+  it('redirige una ruta interna antigua al portal del rol autenticado', async () => {
     sessionStorage.setItem('auth_token', 'client-token')
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify(client), { status: 200, headers: { 'Content-Type': 'application/json' } }))
     renderApp(['/panel'])
-    expect(await screen.findByRole('alert')).toHaveTextContent(/acceso denegado/i)
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/cliente'))
   })
 
   it('asocia una conversación después del login CLIENTE sin bloquear la redirección', async () => {

@@ -61,10 +61,13 @@ describe('aplicación base', () => {
     expect(screen.getByRole('heading', { name: /bienvenido/i })).toBeInTheDocument()
   })
 
-  it.each(['ASESOR', 'SUPERVISOR'] as const)('deniega la creación de tickets al rol %s', (role) => {
+  it.each([
+    ['ASESOR', '/personal/tickets'],
+    ['SUPERVISOR', '/personal'],
+  ] as const)('redirige la creación de tickets al portal del rol %s', async (role, destination) => {
     setRole(role)
     renderApp(['/cliente/tickets/nuevo'])
-    expect(screen.getByRole('alert')).toHaveTextContent(/acceso denegado/i)
+    expect(await screen.findByTestId('location')).toHaveTextContent(destination)
   })
 
   it('incluye el acceso a crear ticket en la navegación del cliente', () => {
@@ -76,6 +79,25 @@ describe('aplicación base', () => {
   it('redirige las rutas internas al acceso de personal sin sesión', () => {
     renderApp(['/personal/tickets'])
     expect(screen.getByRole('heading', { name: /acceso para personal/i })).toBeInTheDocument()
+  })
+
+  it('redirige /personal sin sesión al acceso de personal', () => {
+    renderApp(['/personal'])
+    expect(screen.getByTestId('location')).toHaveTextContent('/personal/login')
+    expect(screen.getByRole('heading', { name: /acceso para personal/i })).toBeInTheDocument()
+  })
+
+  it.each([
+    ['CLIENTE', '/personal', '/cliente'],
+    ['CLIENTE', '/personal/tickets', '/cliente'],
+    ['ASESOR', '/personal', '/personal/tickets'],
+    ['ASESOR', '/cliente', '/personal/tickets'],
+    ['SUPERVISOR', '/cliente', '/personal'],
+  ] as const)('redirige %s desde %s a su portal autorizado %s', async (role, source, destination) => {
+    setRole(role)
+    renderApp([source])
+    expect(await screen.findByTestId('location')).toHaveTextContent(destination)
+    expect(screen.queryByRole('alert', { name: /acceso denegado/i })).not.toBeInTheDocument()
   })
 
   it('muestra la página 404', () => {

@@ -3,7 +3,6 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { ClientLayout } from '../components/layout/portal-layout'
 import { PublicLayout } from '../components/layout/public-layout'
 import { StaffLayout } from '../components/layout/staff-layout'
-import { AccessDenied } from '../components/ui/states'
 import { useAuth } from '../features/auth/auth-provider'
 import { ChatPage } from '../features/chatbot/pages/chat-page'
 import { FaqPage } from '../features/faqs/pages/faq-page'
@@ -29,7 +28,14 @@ function ProtectedRoute({ roles, children }: { roles: Role[]; children: ReactNod
   const { session, isLoading } = useAuth()
   if (isLoading) return <div className="state" role="status">Validando sesión…</div>
   if (!session) return <Navigate to={roles.includes('CLIENTE') ? '/login' : '/personal/login'} replace />
-  return hasRole(session, roles) ? children : <AccessDenied />
+  if (!hasRole(session, roles)) return <Navigate to={destinationForRole(session.user.role, roles)} replace />
+  return children
+}
+
+function destinationForRole(role: Role, roles: Role[]): string {
+  if (roles.includes('CLIENTE')) return role === 'SUPERVISOR' ? '/personal' : '/personal/tickets'
+  if (role === 'CLIENTE') return '/cliente'
+  return role === 'ASESOR' ? '/personal/tickets' : '/personal'
 }
 
 function ChatRoute({ onCreateTicket }: { onCreateTicket?: () => void }) {
@@ -74,6 +80,7 @@ export function AppRouter({ onCreateTicket }: { onCreateTicket?: () => void }) {
 
 function PersonalHomeRoute() {
   const { session } = useAuth()
+  if (session?.user.role === 'CLIENTE') return <Navigate to="/cliente" replace />
   if (session?.user.role === 'ASESOR') return <Navigate to="/personal/tickets" replace />
   return <ProtectedRoute roles={['SUPERVISOR']}><SupervisorDashboardPage /></ProtectedRoute>
 }

@@ -281,7 +281,7 @@ code { padding: .15rem .35rem; border-radius: .3rem; background: #e6f1f2; font-s
 .ticket-comments-list p { margin: 0 0 var(--space-2); white-space: pre-wrap; }
 .comment-author { display: block; margin-bottom: .25rem; color: var(--color-ink-700); font-size: .8rem; font-weight: 700; }
 .ticket-filters { display: flex; flex-wrap: wrap; align-items: end; gap: var(--space-3); margin: var(--space-6) 0; padding: var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); }
-.ticket-filters label { display: grid; gap: .35rem; color: var(--color-muted); font-size: .78rem; font-weight: 700; }
+.ticket-filters label { display: grid; min-width: 0; gap: .35rem; color: var(--color-muted); font-size: .78rem; font-weight: 700; }
 .ticket-filters select, .ticket-filters input { min-height: 2.5rem; padding: .5rem .65rem; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: white; color: var(--color-ink-900); }
 .ticket-actions { margin-top: var(--space-8); padding: var(--space-5); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); }
 .ticket-actions h2 { margin-top: 0; font-size: 1rem; }
@@ -292,8 +292,9 @@ code { padding: .15rem .35rem; border-radius: .3rem; background: #e6f1f2; font-s
 .action-dialog textarea { min-height: 6rem; padding: .65rem; border: 1px solid var(--color-border); border-radius: var(--radius-sm); }
 .action-dialog > div { display: flex; gap: var(--space-3); }
 .report-filters { display: flex; flex-wrap: wrap; align-items: end; gap: var(--space-3); margin: var(--space-6) 0; padding: var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); }
-.report-filters label, .ticket-assignment label { display: grid; gap: .35rem; color: var(--color-muted); font-size: .78rem; font-weight: 700; }
+.report-filters label, .ticket-assignment label { display: grid; min-width: 0; gap: .35rem; color: var(--color-muted); font-size: .78rem; font-weight: 700; }
 .report-filters select, .report-filters input, .ticket-assignment select { min-height: 2.5rem; padding: .5rem .65rem; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: white; color: var(--color-ink-900); }
+.report-filter-error, .ticket-filter-error { flex-basis: 100%; }
 .report-summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-4); }
 .report-summary-card { padding: var(--space-5); display: grid; gap: var(--space-2); }
 .report-summary-card span { color: var(--color-muted); font-size: .8rem; }
@@ -343,11 +344,13 @@ code { padding: .15rem .35rem; border-radius: .3rem; background: #e6f1f2; font-s
 @media (max-width: 680px) {
   .brand-copy small { max-width: 12rem; }
   .public-navigation { align-items: stretch; flex-direction: column-reverse; gap: var(--space-3); }
-  .public-nav-links { padding-bottom: .2rem; white-space: nowrap; }
+  .public-nav-links { padding-bottom: .2rem; flex-wrap: wrap; overflow-x: visible; white-space: normal; }
+  .public-nav-actions { width: 100%; }
   .public-nav-actions .button { flex: 1; }
   .academic-disclaimer { align-items: flex-start; text-align: left; }
   .hero-grid { padding-block: 3.75rem 5rem; }
   .hero-copy h1 { font-size: clamp(2.75rem, 15vw, 4rem); }
+  .hero-actions { padding-right: 9rem; }
   .hero-actions .button { width: 100%; }
   .hero-visual { min-height: 20rem; }
   .assistant-card { padding: var(--space-6); transform: none; }
@@ -367,12 +370,12 @@ code { padding: .15rem .35rem; border-radius: .3rem; background: #e6f1f2; font-s
   .portal-header { align-items: flex-start; flex-direction: column; }
   .portal-user { width: 100%; justify-content: space-between; }
   .portal-user > div { align-items: flex-start; flex-direction: column; }
-  .portal-navigation { gap: var(--space-5); overflow-x: auto; }
+  .portal-navigation { flex-wrap: wrap; gap: var(--space-3) var(--space-5); }
   .staff-shell { display: block; }
   .staff-sidebar { position: relative; width: 100%; height: auto; }
   .staff-user { margin: var(--space-6) 0; }
-  .staff-sidebar nav { display: flex; overflow-x: auto; }
-  .staff-sidebar nav a { white-space: nowrap; }
+  .staff-sidebar nav { display: flex; flex-wrap: wrap; }
+  .staff-sidebar nav a { white-space: normal; }
   .staff-logout { margin-top: var(--space-5); }
   .staff-content { width: min(100% - 2rem, 70rem); padding-block: var(--space-8); }
   .chat-composer { flex-direction: column; }
