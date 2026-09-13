@@ -11,6 +11,8 @@ import { ClientDashboardPage } from '../features/tickets/pages/client-dashboard-
 import { ClientTicketsPage } from '../features/tickets/pages/client-tickets-page'
 import { ClientTicketCreatePage } from '../features/tickets/pages/client-ticket-create-page'
 import { ClientTicketDetailPage } from '../features/tickets/pages/client-ticket-detail-page'
+import { StaffTicketDetailPage } from '../features/tickets/pages/staff-ticket-detail-page'
+import { StaffTicketsPage } from '../features/tickets/pages/staff-tickets-page'
 import { hasRole } from '../lib/auth'
 import {
   HomePage,
@@ -18,8 +20,6 @@ import {
   LoginPage,
   NotFoundPage,
   PanelHomePage,
-  PanelTicketDetailPage,
-  PanelTicketsPage,
   RegisterPage,
   StaffLoginPage,
 } from '../pages/base-pages'
@@ -63,8 +63,8 @@ export function AppRouter({ onCreateTicket }: { onCreateTicket?: () => void }) {
     </Route>
     <Route element={<StaffLayout />}>
       <Route path="/personal" element={<ProtectedRoute roles={['SUPERVISOR']}><PanelHomePage /></ProtectedRoute>} />
-      <Route path="/personal/tickets" element={<ProtectedRoute roles={['ASESOR', 'SUPERVISOR']}><PanelTicketsPage /></ProtectedRoute>} />
-      <Route path="/personal/tickets/:ticketId" element={<ProtectedRoute roles={['ASESOR', 'SUPERVISOR']}><PanelTicketDetailPage /></ProtectedRoute>} />
+      <Route path="/personal/tickets" element={<ProtectedRoute roles={['ASESOR', 'SUPERVISOR']}><StaffTicketsPage /></ProtectedRoute>} />
+      <Route path="/personal/tickets/:ticketId" element={<ProtectedRoute roles={['ASESOR', 'SUPERVISOR']}><StaffTicketDetailPage /></ProtectedRoute>} />
       <Route path="/personal/conocimiento" element={<ProtectedRoute roles={['SUPERVISOR']}><KnowledgePage /></ProtectedRoute>} />
     </Route>
     <Route path="/panel/*" element={<LegacyPanelRedirect />} />

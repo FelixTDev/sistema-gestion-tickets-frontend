@@ -279,6 +279,18 @@ code { padding: .15rem .35rem; border-radius: .3rem; background: #e6f1f2; font-s
 .ticket-comments-list { max-width: 48rem; padding: 0; display: grid; gap: var(--space-3); list-style: none; }
 .ticket-comments-list li { padding: var(--space-4); border-left: 3px solid var(--color-accent-500); border-radius: var(--radius-sm); background: white; }
 .ticket-comments-list p { margin: 0 0 var(--space-2); white-space: pre-wrap; }
+.comment-author { display: block; margin-bottom: .25rem; color: var(--color-ink-700); font-size: .8rem; font-weight: 700; }
+.ticket-filters { display: flex; flex-wrap: wrap; align-items: end; gap: var(--space-3); margin: var(--space-6) 0; padding: var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); }
+.ticket-filters label { display: grid; gap: .35rem; color: var(--color-muted); font-size: .78rem; font-weight: 700; }
+.ticket-filters select, .ticket-filters input { min-height: 2.5rem; padding: .5rem .65rem; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: white; color: var(--color-ink-900); }
+.ticket-actions { margin-top: var(--space-8); padding: var(--space-5); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); }
+.ticket-actions h2 { margin-top: 0; font-size: 1rem; }
+.ticket-action-buttons { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.button-danger { background: #9e3030; border-color: #9e3030; }
+.action-dialog { display: grid; gap: var(--space-3); max-width: 32rem; margin-top: var(--space-4); padding: var(--space-4); border: 2px solid var(--color-accent-500); border-radius: var(--radius-md); background: white; }
+.action-dialog h3 { margin: 0; }
+.action-dialog textarea { min-height: 6rem; padding: .65rem; border: 1px solid var(--color-border); border-radius: var(--radius-sm); }
+.action-dialog > div { display: flex; gap: var(--space-3); }
 .ticket-comment-form { max-width: 48rem; }
 
 .chatbot-widget { position: fixed; z-index: 40; right: max(1rem, calc((100vw - var(--content-width)) / 2)); bottom: var(--space-5); }
@@ -354,6 +366,8 @@ code { padding: .15rem .35rem; border-radius: .3rem; background: #e6f1f2; font-s
   .conversation-form .button { width: 100%; }
   .page-heading-actions, .ticket-detail-heading { align-items: flex-start; flex-direction: column; }
   .client-dashboard-stats, .ticket-detail-grid { grid-template-columns: 1fr; }
+  .ticket-filters { align-items: stretch; flex-direction: column; }
+  .ticket-filters .button { width: 100%; }
   .ticket-form { padding: var(--space-4); }
   .confirmation-actions { flex-direction: column-reverse; }
   .confirmation-actions .button { width: 100%; }

@@ -15,13 +15,13 @@ La interfaz adopta un lenguaje institucional propio, sobrio y accesible, con azu
 - `/cliente/tickets`: bandeja de tickets del cliente autenticado.
 - `/cliente/tickets/nuevo`: creación manual o conversión de una conversación del asistente.
 - `/cliente/tickets/:ticketId`: detalle, historial y comentarios permitidos del ticket.
-- `/personal/tickets` y descendientes: espacio protegido para `ASESOR` y `SUPERVISOR`.
+- `/personal/tickets` y descendientes: bandeja y detalle operativos protegidos para `ASESOR` y `SUPERVISOR`.
 - `/personal` y `/personal/conocimiento`: espacio protegido para `SUPERVISOR`.
 - `/panel/*`: rutas antiguas que redirigen con reemplazo de historial a su equivalente `/personal/*`.
 - `/preguntas-frecuentes`: FAQ públicas con búsqueda y filtro por categoría.
 - `/chat`: asistente disponible para visitantes y `CLIENTE`; los roles internos son redirigidos a su espacio oficial.
 
-El enlace de acceso para personal se muestra de forma discreta únicamente en el footer público. Los layouts público, de cliente y de personal son visual y funcionalmente distintos. El dashboard y el portal de tickets de cliente consumen la API real; las superficies operativas de personal continúan fuera del alcance de esta fase.
+El enlace de acceso para personal se muestra de forma discreta únicamente en el footer público. Los layouts público, de cliente y de personal son visual y funcionalmente distintos.
 
 ## Requisitos
 
@@ -77,10 +77,15 @@ El portal usa únicamente operaciones autorizadas para `CLIENTE`:
 - `GET /tickets/mine` para el dashboard y la bandeja propia.
 - `POST /tickets` para una solicitud manual.
 - `GET /tickets/{ticket_id}` y `GET /tickets/{ticket_id}/history` para detalle y trazabilidad.
+- `GET /tickets/{ticket_id}/comments` para recuperar comentarios persistentes.
 - `POST /tickets/{ticket_id}/comments` para añadir comentarios cuando el ticket no está `CERRADO` ni `CANCELADO`.
 - `POST /chat/conversations/{conversation_id}/convert-to-ticket` para convertir una conversación no resuelta.
 
-El cliente no recibe controles para cerrar, reabrir, cancelar, asignar o cambiar el estado: esas transiciones corresponden al personal según el backend. El contrato actual tampoco ofrece un endpoint para leer el contenido de comentarios anteriores. Por ello, la pantalla muestra el historial persistente y únicamente los comentarios creados durante su montaje actual, sin inventar datos ni una operación GET inexistente.
+El cliente no recibe controles para cerrar, reabrir, cancelar, asignar o cambiar el estado: esas transiciones corresponden al personal según el backend. Los comentarios se ordenan cronológicamente y muestran `Tú` o `Atención`, sin exponer identificadores internos.
+
+## Espacio operativo de personal
+
+La bandeja usa `GET /tickets` con los filtros opcionales `status`, `category_id`, `priority`, `created_from` y `created_to`. El detalle reutiliza historial y comentarios persistentes. `ASESOR` puede cambiar estado, cerrar o reabrir tickets asignados a su usuario; `SUPERVISOR` puede operar globalmente y cancelar con motivo. Las acciones respetan las transiciones y contratos del backend, muestran confirmación y mensajes genéricos para errores 401, 403, 404, 409 y 422. No se añadió selector de asignación porque el backend no ofrece un endpoint de asesores. El dashboard supervisor, reportes, paginación y conversión a ticket quedan para fases posteriores.
 
 ## Pruebas y build
 
@@ -106,4 +111,4 @@ src/
 └── main.tsx
 ```
 
-El cliente HTTP centralizado usa `fetch`, serializa JSON, envía el token mediante `Authorization: Bearer` y transforma errores al tipo `ApiError`. La autenticación, las FAQ, el chatbot y el portal de tickets de cliente están conectados. La bandeja operativa, asignación, transiciones de estado, métricas y dashboard real del personal quedan para la próxima fase.
+El cliente HTTP centralizado usa `fetch`, serializa JSON, envía el token mediante `Authorization: Bearer` y transforma errores al tipo `ApiError`. La autenticación, las FAQ, el chatbot, el portal de tickets de cliente y la bandeja operativa están conectados. La asignación, métricas, reportes y dashboard real del personal quedan para la próxima fase.

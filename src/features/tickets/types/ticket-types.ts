@@ -50,3 +50,24 @@ export interface HistoryRead {
   description: string
   created_at: string
 }
+
+export interface TicketStatusChange {
+  status: TicketStatus
+  reason: string | null
+}
+
+export interface ReasonRequest {
+  reason: string
+}
+
+export interface AssignmentCreate {
+  advisor_id: string
+}
+
+export interface TicketListFilters {
+  status: TicketStatus | ''
+  category_id: string
+  priority: TicketPriority | ''
+  created_from: string
+  created_to: string
+}

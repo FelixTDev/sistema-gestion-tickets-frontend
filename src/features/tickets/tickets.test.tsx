@@ -312,6 +312,7 @@ describe('detalle, historial, comentarios y acciones del cliente', () => {
     return vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
       const url = String(input)
       if (url.endsWith(`/tickets/${ticket.id}/history`)) return Promise.resolve(jsonResponse(historyItems))
+      if (url.endsWith(`/tickets/${ticket.id}/comments`) && !init?.method) return Promise.resolve(jsonResponse(historyItems.length ? [comment] : []))
       if (url.endsWith(`/tickets/${ticket.id}/comments`) && init?.method === 'POST') return Promise.resolve(jsonResponse(comment, 201))
       if (url.endsWith(`/tickets/${ticket.id}`)) return Promise.resolve(jsonResponse(ticket))
       if (url.endsWith('/categories')) return Promise.resolve(jsonResponse(categories))
@@ -331,19 +332,19 @@ describe('detalle, historial, comentarios y acciones del cliente', () => {
     expect(screen.getByLabelText('Prioridad: Alta')).toBeInTheDocument()
     expect(screen.getByText('Origen: Chatbot')).toBeInTheDocument()
     expect(screen.getByText('Categoría no disponible')).toBeInTheDocument()
-    expect(screen.getByText('advisor-1')).toBeInTheDocument()
+    expect(screen.getAllByText('Asesor asignado').length).toBeGreaterThan(0)
     const events = await screen.findAllByRole('listitem')
     expect(within(events[0]).getByText('Ticket creado')).toBeInTheDocument()
     expect(within(events[1]).getByText('Ticket en atención')).toBeInTheDocument()
     expect(screen.queryByText(/fecha de cierre/i)).not.toBeInTheDocument()
   })
 
-  it('muestra historial vacío y explica la limitación real de comentarios históricos', async () => {
+  it('muestra historial y comentarios persistentes vacíos', async () => {
     mockDetail(newerTicket, [])
     renderApp(`/cliente/tickets/${newerTicket.id}`)
 
     expect(await screen.findByText(/aún no hay eventos en el historial/i)).toBeInTheDocument()
-    expect(screen.getByText(/no permite recuperar el contenido de comentarios anteriores/i)).toBeInTheDocument()
+    expect(await screen.findByText(/aún no hay comentarios/i)).toBeInTheDocument()
   })
 
   it('valida y publica un comentario una sola vez sin abandonar la ruta', async () => {

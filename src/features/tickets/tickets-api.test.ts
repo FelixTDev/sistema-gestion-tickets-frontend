@@ -1,13 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   addTicketComment,
+  cancelTicket,
+  changeTicketStatus,
+  closeTicket,
   convertConversationToTicket,
   createTicket,
+  getTicketComments,
   getTicket,
   getTicketHistory,
+  listTickets,
   listMyTickets,
+  reopenTicket,
 } from './api/ticket-api'
-import type { TicketCreate, TicketRead } from './types/ticket-types'
+import type { TicketCreate, TicketListFilters, TicketRead } from './types/ticket-types'
 
 const payload: TicketCreate = {
   category_id: 'category-1',
@@ -78,5 +84,49 @@ describe('API de tickets del cliente', () => {
     expect(String(fetchMock.mock.calls[0][0])).toMatch(/\/tickets\/ticket-1\/comments$/)
     expect(fetchMock.mock.calls[0][1]).toEqual(expect.objectContaining({ method: 'POST', body: JSON.stringify({ content: 'Información adicional' }) }))
     expect(localStorage.length).toBe(0)
+  })
+
+  it('lee comentarios persistentes y lista tickets operativos con filtros exactos', async () => {
+    const comments = [{ id: 'comment-1', ticket_id: ticket.id, author_id: 'client-1', content: 'Consulta', created_at: '2026-09-12T21:00:00Z' }]
+    const filters: TicketListFilters = { status: 'EN_PROCESO', category_id: 'category-1', priority: 'ALTA', created_from: '2026-09-12T00:00:00', created_to: '2026-09-12T23:59:59' }
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(jsonResponse(comments))
+      .mockResolvedValueOnce(jsonResponse([ticket]))
+
+    await expect(getTicketComments(ticket.id)).resolves.toEqual(comments)
+    await expect(listTickets(filters)).resolves.toEqual([ticket])
+
+    expect(String(fetchMock.mock.calls[0][0])).toMatch(/\/tickets\/ticket-1\/comments$/)
+    const url = new URL(String(fetchMock.mock.calls[1][0]))
+    expect(url.pathname).toMatch(/\/tickets$/)
+    expect(url.searchParams.get('status')).toBe(filters.status)
+    expect(url.searchParams.get('category_id')).toBe(filters.category_id)
+    expect(url.searchParams.get('priority')).toBe(filters.priority)
+    expect(url.searchParams.get('created_from')).toBe(filters.created_from)
+    expect(url.searchParams.get('created_to')).toBe(filters.created_to)
+  })
+
+  it('usa los cuerpos exactos de las mutaciones operativas', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(jsonResponse(ticket))
+      .mockResolvedValueOnce(jsonResponse(ticket))
+      .mockResolvedValueOnce(jsonResponse(ticket))
+      .mockResolvedValueOnce(jsonResponse(ticket))
+
+    await changeTicketStatus(ticket.id, { status: 'EN_PROCESO', reason: null })
+    await closeTicket(ticket.id)
+    await reopenTicket(ticket.id, { reason: 'Revisión solicitada' })
+    await cancelTicket(ticket.id, { reason: 'Solicitud cancelada' })
+
+    expect(fetchMock.mock.calls.map(([input]) => String(input))).toEqual([
+      expect.stringMatching(/\/tickets\/ticket-1\/status$/),
+      expect.stringMatching(/\/tickets\/ticket-1\/close$/),
+      expect.stringMatching(/\/tickets\/ticket-1\/reopen$/),
+      expect.stringMatching(/\/tickets\/ticket-1\/cancel$/),
+    ])
+    expect(fetchMock.mock.calls[0][1]).toEqual(expect.objectContaining({ method: 'POST', body: JSON.stringify({ status: 'EN_PROCESO', reason: null }) }))
+    expect(fetchMock.mock.calls[1][1]).toEqual(expect.objectContaining({ method: 'POST', body: JSON.stringify({}) }))
+    expect(fetchMock.mock.calls[2][1]).toEqual(expect.objectContaining({ method: 'POST', body: JSON.stringify({ reason: 'Revisión solicitada' }) }))
+    expect(fetchMock.mock.calls[3][1]).toEqual(expect.objectContaining({ method: 'POST', body: JSON.stringify({ reason: 'Solicitud cancelada' }) }))
   })
 })

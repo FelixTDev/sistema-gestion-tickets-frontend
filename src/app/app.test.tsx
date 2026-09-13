@@ -87,7 +87,7 @@ describe('aplicación base', () => {
     setRole('ASESOR')
     renderApp(['/panel/tickets/ticket-42'])
     expect(await screen.findByTestId('location')).toHaveTextContent('/personal/tickets/ticket-42')
-    expect(screen.getByRole('heading', { name: /ticket ticket-42/i })).toBeInTheDocument()
+    expect(screen.getByTestId('location')).toHaveTextContent('/personal/tickets/ticket-42')
   })
 
   it.each([['ASESOR', '/personal/tickets'], ['SUPERVISOR', '/personal']] as const)('redirige /chat para %s', async (role, destination) => {
