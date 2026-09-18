@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react'
+import { Modal } from '../../../components/ui/modal'
+import { Button } from '../../../components/ui/button'
 
 interface NewConversationDialogProps {
   isOpen: boolean
@@ -8,26 +9,7 @@ interface NewConversationDialogProps {
 }
 
 export function NewConversationDialog({ isOpen, isPending, onCancel, onConfirm }: NewConversationDialogProps) {
-  const cancelRef = useRef<HTMLButtonElement>(null)
-  useEffect(() => {
-    if (!isOpen) return
-    cancelRef.current?.focus()
-    function handleEscape(event: KeyboardEvent): void {
-      if (event.key === 'Escape') onCancel()
-    }
-    document.addEventListener('keydown', handleEscape)
-    return () => document.removeEventListener('keydown', handleEscape)
-  }, [isOpen, onCancel])
-  if (!isOpen) return null
-
-  return <div className="confirmation-backdrop">
-    <section className="confirmation-dialog" role="alertdialog" aria-modal="true" aria-labelledby="new-conversation-title" aria-describedby="new-conversation-description">
-      <h2 id="new-conversation-title">¿Crear una nueva conversación?</h2>
-      <p id="new-conversation-description">La conversación actual dejará de mostrarse en esta pestaña.</p>
-      <div className="confirmation-actions">
-        <button ref={cancelRef} className="button button-secondary" type="button" onClick={onCancel}>Conservar conversación</button>
-        <button className="button" type="button" disabled={isPending} onClick={onConfirm}>{isPending ? 'Creando…' : 'Crear nueva'}</button>
-      </div>
-    </section>
-  </div>
+  return <Modal open={isOpen} onClose={onCancel} title="¿Crear una nueva conversación?" role="alertdialog" danger footer={<><Button variant="secondary" onClick={onCancel}>Conservar conversación</Button><Button onClick={onConfirm} loading={isPending}>Crear nueva</Button></>}>
+    <p>La conversación actual dejará de mostrarse en esta pestaña.</p>
+  </Modal>
 }

@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
 import { ApiError } from '../../lib/api-client'
 import { useAuth } from '../auth/auth-provider'
-import { clearConversationId, getConversationId, setConversationId } from './chatbot-storage'
+import { clearConversationId, getConversationId, isConversationId, setConversationId } from './chatbot-storage'
 import {
   conversationQueryKey,
   useConversationQuery,
@@ -36,7 +36,7 @@ interface ChatbotContextValue {
 const ChatbotContext = createContext<ChatbotContextValue | null>(null)
 
 function isInternalPath(pathname: string): boolean {
-  return pathname === '/personal' || pathname.startsWith('/personal/') || pathname === '/panel' || pathname.startsWith('/panel/')
+  return pathname === '/design-system' || pathname === '/personal' || pathname.startsWith('/personal/') || pathname === '/panel' || pathname.startsWith('/panel/')
 }
 
 function isUnavailableError(error: unknown): boolean {
@@ -55,6 +55,7 @@ export function ChatbotProvider({ children }: { children: ReactNode }) {
   const [resolved, setResolved] = useState(false)
   const [readyClientConversationId, setReadyClientConversationId] = useState<string | null>(null)
   const [isLinking, setIsLinking] = useState(false)
+  const [linkRetryNonce, setLinkRetryNonce] = useState(0)
   const linkAttempts = useRef(new Set<string>())
   const isStaff = user?.role === 'ASESOR' || user?.role === 'SUPERVISOR'
   const canUseChatbot = !isAuthLoading && !isStaff && !isInternalPath(pathname)
@@ -79,6 +80,13 @@ export function ChatbotProvider({ children }: { children: ReactNode }) {
   }, [conversationQuery.error])
 
   useEffect(() => {
+    const restored = conversationQuery.data
+    if (!restored || isConversationId(restored.id)) return
+    clearCurrentConversation()
+    setOperationError('No pudimos recuperar la conversación.')
+  }, [conversationQuery.data])
+
+  useEffect(() => {
     if (!canUseChatbot || user?.role !== 'CLIENTE' || !conversationId || readyClientConversationId === conversationId) return
     const attemptKey = `${user.id}:${conversationId}`
     if (linkAttempts.current.has(attemptKey)) return
@@ -89,20 +97,26 @@ export function ChatbotProvider({ children }: { children: ReactNode }) {
       .then(() => linkMutation.mutateAsync(conversationId))
       .then((linked) => {
         if (!isActive) return
+        if (!isConversationId(linked.id) || linked.id !== conversationId) throw new Error('El servicio devolvió una asociación inválida.')
         queryClient.setQueryData<ConversationRead>(conversationQueryKey(conversationId), (current) => current ? { ...current, user_id: linked.user_id, status: linked.status } : current)
         setReadyClientConversationId(conversationId)
       })
       .catch((error: unknown) => {
         if (!isActive) return
+        linkAttempts.current.delete(attemptKey)
         if (isUnavailableError(error)) clearCurrentConversation()
         else setOperationError('No pudimos asociar la conversación. Podrás intentarlo nuevamente más tarde.')
       })
       .finally(() => { if (isActive) setIsLinking(false) })
-    return () => { isActive = false }
-  }, [canUseChatbot, conversationId, queryClient, readyClientConversationId, user])
+    return () => {
+      isActive = false
+      linkAttempts.current.delete(attemptKey)
+    }
+  }, [canUseChatbot, conversationId, linkRetryNonce, queryClient, readyClientConversationId, user])
 
   async function createAndSelectConversation(): Promise<ConversationRead> {
     const created = await createMutation.mutateAsync()
+    if (!isConversationId(created.id)) throw new Error('El servicio devolvió un identificador de conversación inválido.')
     setConversationId(created.id)
     setCurrentConversationId(created.id)
     setReadyClientConversationId(user?.role === 'CLIENTE' ? created.id : null)
@@ -150,8 +164,15 @@ export function ChatbotProvider({ children }: { children: ReactNode }) {
     isCreating: createMutation.isPending,
     isSending: sendMutation.isPending,
     offersTicket, resolved, canUseChatbot, setDraft, sendMessage, startNewConversation, clearConversationAfterTicket,
-    retry: () => { setOperationError(null); void conversationQuery.refetch() },
-  }), [canUseChatbot, conversation, conversationQuery, createMutation.isPending, draft, error, isLinking, offersTicket, resolved, sendMutation.isPending, validationError])
+    retry: () => {
+      setOperationError(null)
+      if (user?.role === 'CLIENTE' && conversationId && readyClientConversationId !== conversationId) {
+        setLinkRetryNonce((current) => current + 1)
+      } else {
+        void conversationQuery.refetch()
+      }
+    },
+  }), [canUseChatbot, conversation, conversationId, conversationQuery, createMutation.isPending, draft, error, isLinking, offersTicket, readyClientConversationId, resolved, sendMutation.isPending, user, validationError])
 
   return <ChatbotContext.Provider value={value}>{children}</ChatbotContext.Provider>
 }

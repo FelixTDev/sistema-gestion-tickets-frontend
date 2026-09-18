@@ -1,25 +1,14 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { CategoryRead } from '../../faqs/types/faq-types'
-import { TicketPriorityBadge, TicketStatusBadge } from './ticket-badges'
 import { sortTicketsNewestFirst, ticketSourceLabel } from '../ticket-utils'
 import type { TicketRead } from '../types/ticket-types'
+import { TicketPriorityBadge, TicketStatusBadge } from './ticket-badges'
 
-function formatDate(value: string): string {
-  return new Intl.DateTimeFormat('es-PE', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
-}
-
+function formatDate(value: string): string { const date = new Date(value); return Number.isNaN(date.getTime()) ? 'Fecha no disponible' : new Intl.DateTimeFormat('es-PE', { dateStyle: 'medium' }).format(date) }
 export function TicketList({ tickets, categories, detailBasePath = '/cliente/tickets' }: { tickets: TicketRead[]; categories: CategoryRead[]; detailBasePath?: string }) {
-  const categoryNames = new Map(categories.filter((category) => category.is_active).map((category) => [category.id, category.name]))
-  return <div className="ticket-list">
-    {sortTicketsNewestFirst(tickets).map((ticket) => <article className="ticket-card" key={ticket.id}>
-      <div className="ticket-card-topline"><strong>{ticket.tracking_code}</strong><time dateTime={ticket.created_at}>{formatDate(ticket.created_at)}</time></div>
-      <h2>{ticket.subject}</h2>
-      <div className="ticket-card-badges"><TicketStatusBadge status={ticket.status} /><TicketPriorityBadge priority={ticket.priority} /></div>
-      <dl className="ticket-card-meta">
-        <div><dt>Categoría</dt><dd>{categoryNames.get(ticket.category_id) ?? 'Categoría no disponible'}</dd></div>
-        <div><dt>Fuente</dt><dd>Origen: {ticketSourceLabel(ticket.source)}</dd></div>
-      </dl>
-      <Link className="text-link" to={`${detailBasePath}/${ticket.id}`} aria-label={`Ver ticket ${ticket.tracking_code}`}>Ver detalle <span aria-hidden="true">→</span></Link>
-    </article>)}
-  </div>
+  const categoryNames = new Map(categories.filter((category) => category.is_active).map((category) => [category.id, category.name])); const ordered = sortTicketsNewestFirst(tickets); const [isWide, setIsWide] = useState(false)
+  useEffect(() => { if (!window.matchMedia) return; const media = window.matchMedia('(min-width: 768px)'); const sync = () => setIsWide(media.matches); sync(); media.addEventListener?.('change', sync); return () => media.removeEventListener?.('change', sync) }, [])
+  const categoryLabel = (ticket: TicketRead) => categoryNames.get(ticket.category_id) ?? 'Categoría no disponible'
+  return <div className="overflow-hidden rounded-[14px] border border-[#e6edef] bg-white shadow-[0_1px_2px_rgba(16,42,67,0.04),0_8px_24px_-16px_rgba(16,42,67,0.12)]">{isWide ? <div className="overflow-x-auto"><table className="w-full min-w-[720px] text-left"><caption className="sr-only">Tickets registrados</caption><thead><tr className="border-b border-[#eef2f3] text-[11px] uppercase tracking-wider text-muted"><th className="px-5 py-3 font-semibold">Código</th><th className="px-5 py-3 font-semibold">Asunto</th><th className="px-5 py-3 font-semibold">Categoría</th><th className="px-5 py-3 font-semibold">Estado</th><th className="px-5 py-3 font-semibold">Prioridad</th><th className="px-5 py-3 font-semibold">Fecha</th></tr></thead><tbody className="divide-y divide-[#eef2f3]">{ordered.map((ticket) => <tr key={ticket.id} className="hover:bg-[#fafcfc]"><td className="px-5 py-4 font-mono text-[12px] font-bold text-ink-800"><Link to={`${detailBasePath}/${ticket.id}`} aria-label={`Ver ticket ${ticket.tracking_code}`}>{ticket.tracking_code}</Link></td><td className="max-w-[260px] truncate px-5 py-4 text-[14px] font-semibold text-ink">{ticket.subject}</td><td className="px-5 py-4 text-[13px] text-muted">{categoryLabel(ticket)}</td><td className="px-5 py-4"><TicketStatusBadge status={ticket.status} /></td><td className="px-5 py-4"><TicketPriorityBadge priority={ticket.priority} /></td><td className="whitespace-nowrap px-5 py-4 font-mono text-[12px] text-muted"><time dateTime={ticket.created_at}>{formatDate(ticket.created_at)}</time></td></tr>)}</tbody></table></div> : <ul className="divide-y divide-[#eef2f3]">{ordered.map((ticket) => <li key={ticket.id}><article className="ticket-card"><Link to={`${detailBasePath}/${ticket.id}`} aria-label={`Ver ticket ${ticket.tracking_code}`} className="block p-4 transition-colors hover:bg-[#fafcfc] focus-visible:outline-2 focus-visible:outline-turq"><div className="mb-1.5 flex items-center justify-between gap-2"><span className="font-mono text-[12px] font-bold text-ink-800">{ticket.tracking_code}</span><TicketStatusBadge status={ticket.status} /></div><h2 className="mb-2 text-[14.5px] font-bold text-ink">{ticket.subject}</h2><div className="flex flex-wrap items-center gap-2"><TicketPriorityBadge priority={ticket.priority} /><span className="text-[12px] text-muted"><span>{categoryLabel(ticket)}</span><span aria-hidden="true"> · {formatDate(ticket.created_at)}</span></span></div><p className="mt-2 text-[12px] text-muted">Origen: {ticketSourceLabel(ticket.source)}</p></Link></article></li>)}</ul>}</div>
 }

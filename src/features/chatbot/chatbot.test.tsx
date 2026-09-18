@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -14,7 +14,7 @@ import { ConversationPanel } from './components/conversation-panel'
 import { ChatbotWidget } from './components/chatbot-widget'
 
 const emptyConversation = {
-  id: 'conversation-1', user_id: null, status: 'ACTIVE',
+  id: '11111111-1111-4111-8111-111111111111', user_id: null, status: 'ACTIVE',
   started_at: '2026-09-12T20:00:00Z', ended_at: null, messages: [],
 }
 const userMessage = {
@@ -31,7 +31,7 @@ function jsonResponse(data: unknown, status = 200): Response {
 }
 
 function sessionFor(role: Role): Session {
-  return { accessToken: `${role}-token`, user: { id: `${role}-1`, full_name: `Demo ${role}`, email: `${role.toLowerCase()}@example.com`, role } }
+  return { accessToken: `${role}-token`, user: { id: `${role}-1`, full_name: `Cuenta ${role}`, email: `${role.toLowerCase()}@example.com`, role } }
 }
 
 function ChatHarness({ children = <ConversationPanel />, route = '/' }: { children?: ReactNode; route?: string }) {
@@ -69,7 +69,7 @@ describe('conversación del asistente', () => {
 
     expect(await screen.findByText(userMessage.content)).toBeInTheDocument()
     expect(screen.getByText(botMessage.content)).toBeInTheDocument()
-    expect(sessionStorage.getItem('chat_conversation_id')).toBe('conversation-1')
+    expect(sessionStorage.getItem('chat_conversation_id')).toBe('11111111-1111-4111-8111-111111111111')
     expect(localStorage.length).toBe(0)
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
@@ -89,7 +89,7 @@ describe('conversación del asistente', () => {
   })
 
   it('restaura una conversación almacenada', async () => {
-    sessionStorage.setItem('chat_conversation_id', 'conversation-1')
+    sessionStorage.setItem('chat_conversation_id', '11111111-1111-4111-8111-111111111111')
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({ ...emptyConversation, messages: [userMessage, botMessage] }))
     await renderHarness()
 
@@ -97,7 +97,7 @@ describe('conversación del asistente', () => {
   })
 
   it('limpia una conversación que el backend declara inexistente', async () => {
-    sessionStorage.setItem('chat_conversation_id', 'missing')
+    sessionStorage.setItem('chat_conversation_id', '33333333-3333-4333-8333-333333333333')
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({ message: 'No existe' }, 404))
     await renderHarness()
 
@@ -105,15 +105,24 @@ describe('conversación del asistente', () => {
     expect(screen.getByText(/puedes iniciar una nueva consulta/i)).toBeInTheDocument()
   })
 
+  it('descarta una conversación restaurada con un ID inválido', async () => {
+    sessionStorage.setItem('chat_conversation_id', '11111111-1111-4111-8111-111111111111')
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({ ...emptyConversation, id: 'conversation-1' }))
+    await renderHarness()
+
+    await waitFor(() => expect(sessionStorage.getItem('chat_conversation_id')).toBeNull())
+    expect(await screen.findByRole('alert')).toHaveTextContent(/no pudimos recuperar/i)
+  })
+
   it('conserva el ID y permite reintentar ante un error temporal', async () => {
-    sessionStorage.setItem('chat_conversation_id', 'conversation-1')
+    sessionStorage.setItem('chat_conversation_id', '11111111-1111-4111-8111-111111111111')
     const fetchMock = vi.spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(jsonResponse({ message: 'Temporal' }, 500))
       .mockResolvedValueOnce(jsonResponse({ ...emptyConversation, messages: [botMessage] }))
     await renderHarness()
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/no pudimos recuperar la conversación/i)
-    expect(sessionStorage.getItem('chat_conversation_id')).toBe('conversation-1')
+    expect(sessionStorage.getItem('chat_conversation_id')).toBe('11111111-1111-4111-8111-111111111111')
     await userEvent.click(screen.getByRole('button', { name: /reintentar/i }))
     expect(await screen.findByText(botMessage.content)).toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledTimes(2)
@@ -129,7 +138,7 @@ describe('coordinación por rol', () => {
   })
 
   it('asocia primero y restaura después cuando existe una sesión CLIENTE', async () => {
-    sessionStorage.setItem('chat_conversation_id', 'conversation-1')
+    sessionStorage.setItem('chat_conversation_id', '11111111-1111-4111-8111-111111111111')
     setSession(sessionFor('CLIENTE'))
     let resolveLink!: (response: Response) => void
     const linkPromise = new Promise<Response>((resolve) => { resolveLink = resolve })
@@ -143,16 +152,16 @@ describe('coordinación por rol', () => {
 
     await renderHarness()
     await waitFor(() => expect(calls).toEqual(['link']))
-    resolveLink(jsonResponse({ id: 'conversation-1', user_id: 'CLIENTE-1', status: 'ACTIVE' }))
+    resolveLink(jsonResponse({ id: '11111111-1111-4111-8111-111111111111', user_id: 'CLIENTE-1', status: 'ACTIVE' }))
     await waitFor(() => expect(calls).toEqual(['link', 'restore']))
   })
 
   it('actualiza una conversación anónima ya restaurada después de asociarla', async () => {
-    sessionStorage.setItem('chat_conversation_id', 'conversation-1')
+    sessionStorage.setItem('chat_conversation_id', '11111111-1111-4111-8111-111111111111')
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
       const url = String(input)
       if (url.endsWith('/auth/login')) return Promise.resolve(jsonResponse({ access_token: 'CLIENTE-token', token_type: 'bearer', user: sessionFor('CLIENTE').user }))
-      if (url.endsWith('/link-user')) return Promise.resolve(jsonResponse({ id: 'conversation-1', user_id: 'CLIENTE-1', status: 'ACTIVE' }))
+      if (url.endsWith('/link-user')) return Promise.resolve(jsonResponse({ id: '11111111-1111-4111-8111-111111111111', user_id: 'CLIENTE-1', status: 'ACTIVE' }))
       return Promise.resolve(jsonResponse(emptyConversation))
     })
     await renderHarness(<LoginAndConversationProbe />)
@@ -165,7 +174,7 @@ describe('coordinación por rol', () => {
   })
 
   it.each([403, 404])('limpia el ID cuando link-user responde %s', async (status) => {
-    sessionStorage.setItem('chat_conversation_id', 'conversation-1')
+    sessionStorage.setItem('chat_conversation_id', '11111111-1111-4111-8111-111111111111')
     setSession(sessionFor('CLIENTE'))
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({ message: 'No accesible' }, status))
     await renderHarness()
@@ -174,17 +183,42 @@ describe('coordinación por rol', () => {
   })
 
   it('conserva el ID cuando link-user falla temporalmente', async () => {
-    sessionStorage.setItem('chat_conversation_id', 'conversation-1')
+    sessionStorage.setItem('chat_conversation_id', '11111111-1111-4111-8111-111111111111')
     setSession(sessionFor('CLIENTE'))
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({ message: 'Temporal' }, 500))
     await renderHarness()
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/no pudimos asociar la conversación/i)
-    expect(sessionStorage.getItem('chat_conversation_id')).toBe('conversation-1')
+    expect(sessionStorage.getItem('chat_conversation_id')).toBe('11111111-1111-4111-8111-111111111111')
+  })
+
+  it('no restaura ni muestra el chatbot dentro del Design System', async () => {
+    sessionStorage.setItem('chat_conversation_id', emptyConversation.id)
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse(emptyConversation))
+    renderHarness(<ChatbotWidget />, '/design-system')
+
+    await waitFor(() => expect(fetchMock).not.toHaveBeenCalled())
+    expect(screen.queryByRole('button', { name: /abrir asistente de atención/i })).not.toBeInTheDocument()
+  })
+
+  it('reintenta la asociación temporal antes de restaurar la conversación', async () => {
+    sessionStorage.setItem('chat_conversation_id', '11111111-1111-4111-8111-111111111111')
+    setSession(sessionFor('CLIENTE'))
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(jsonResponse({ message: 'Temporal' }, 500))
+      .mockResolvedValueOnce(jsonResponse({ id: '11111111-1111-4111-8111-111111111111', user_id: 'CLIENTE-1', status: 'ACTIVE' }))
+      .mockResolvedValueOnce(jsonResponse({ ...emptyConversation, user_id: 'CLIENTE-1', messages: [botMessage] }))
+    await renderHarness()
+
+    const error = await screen.findByRole('alert')
+    expect(error).toHaveTextContent(/no pudimos asociar/i)
+    await userEvent.click(within(error).getByRole('button', { name: /reintentar/i }))
+    expect(await screen.findByText(botMessage.content)).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledTimes(3)
   })
 
   it.each(['ASESOR', 'SUPERVISOR'] as const)('permanece totalmente inactivo para %s', async (role) => {
-    sessionStorage.setItem('chat_conversation_id', 'conversation-1')
+    sessionStorage.setItem('chat_conversation_id', '11111111-1111-4111-8111-111111111111')
     setSession(sessionFor(role))
     const fetchMock = vi.spyOn(globalThis, 'fetch')
     await renderHarness()
@@ -195,7 +229,7 @@ describe('coordinación por rol', () => {
   })
 
   it('espera /auth/me antes de decidir si puede restaurar una conversación', async () => {
-    sessionStorage.setItem('chat_conversation_id', 'conversation-1')
+    sessionStorage.setItem('chat_conversation_id', '11111111-1111-4111-8111-111111111111')
     setAccessToken('staff-token')
     let resolveCurrentUser!: (response: Response) => void
     const currentUserPromise = new Promise<Response>((resolve) => { resolveCurrentUser = resolve })
@@ -215,12 +249,30 @@ describe('coordinación por rol', () => {
   })
 
   it('no restaura el chatbot en /personal/login aunque aún no exista sesión', async () => {
-    sessionStorage.setItem('chat_conversation_id', 'conversation-1')
+    sessionStorage.setItem('chat_conversation_id', '11111111-1111-4111-8111-111111111111')
     const fetchMock = vi.spyOn(globalThis, 'fetch')
     await renderHarness(undefined, '/personal/login')
 
     await new Promise((resolve) => setTimeout(resolve, 20))
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('descarta un ID de conversación malformado antes de cualquier llamada', async () => {
+    sessionStorage.setItem('chat_conversation_id', '../not-a-uuid')
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+    await renderHarness()
+
+    await waitFor(() => expect(sessionStorage.getItem('chat_conversation_id')).toBeNull())
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('no persiste el ID cuando crear conversación devuelve un identificador inválido', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({ ...emptyConversation, id: 'conversation-1' }, 201))
+    await renderHarness()
+
+    await userEvent.click(screen.getByRole('button', { name: /nueva conversación/i }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(/no pudimos iniciar/i)
+    expect(sessionStorage.getItem('chat_conversation_id')).toBeNull()
   })
 })
 
@@ -240,6 +292,8 @@ describe('widget y escalamiento visual', () => {
 
     await userEvent.click(launcher)
     expect(screen.getByRole('dialog', { name: /asistente de atención/i })).toBeInTheDocument()
+    expect(screen.getByText('Asistente GNB')).toBeInTheDocument()
+    expect(screen.getByText('En línea')).toBeInTheDocument()
     expect(screen.getByText(/no ingreses números de tarjeta, claves, cvv, tokens/i)).toBeInTheDocument()
     expect(screen.getByLabelText('Escribe tu consulta')).toHaveFocus()
 
@@ -258,27 +312,27 @@ describe('widget y escalamiento visual', () => {
     await renderHarness()
 
     await userEvent.click(screen.getByRole('button', { name: /nueva conversación/i }))
-    await waitFor(() => expect(sessionStorage.getItem('chat_conversation_id')).toBe('conversation-1'))
+    await waitFor(() => expect(sessionStorage.getItem('chat_conversation_id')).toBe('11111111-1111-4111-8111-111111111111'))
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
   })
 
   it('pide confirmación antes de sustituir una conversación con mensajes', async () => {
-    sessionStorage.setItem('chat_conversation_id', 'conversation-1')
+    sessionStorage.setItem('chat_conversation_id', '11111111-1111-4111-8111-111111111111')
     const fetchMock = vi.spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(jsonResponse({ ...emptyConversation, messages: [userMessage, botMessage] }))
-      .mockResolvedValueOnce(jsonResponse({ ...emptyConversation, id: 'conversation-2' }, 201))
+      .mockResolvedValueOnce(jsonResponse({ ...emptyConversation, id: '22222222-2222-4222-8222-222222222222' }, 201))
     await renderHarness()
     await screen.findByText(botMessage.content)
 
     await userEvent.click(screen.getByRole('button', { name: /nueva conversación/i }))
     expect(screen.getByRole('alertdialog', { name: /crear una nueva conversación/i })).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: /conservar conversación/i }))
-    expect(sessionStorage.getItem('chat_conversation_id')).toBe('conversation-1')
+    expect(sessionStorage.getItem('chat_conversation_id')).toBe('11111111-1111-4111-8111-111111111111')
     expect(fetchMock).toHaveBeenCalledTimes(1)
 
     await userEvent.click(screen.getByRole('button', { name: /nueva conversación/i }))
     await userEvent.click(screen.getByRole('button', { name: /^crear nueva$/i }))
-    await waitFor(() => expect(sessionStorage.getItem('chat_conversation_id')).toBe('conversation-2'))
+    await waitFor(() => expect(sessionStorage.getItem('chat_conversation_id')).toBe('22222222-2222-4222-8222-222222222222'))
   })
 
   it('ofrece login y registro al visitante cuando el backend ofrece ticket', async () => {
@@ -290,10 +344,10 @@ describe('widget y escalamiento visual', () => {
     await userEvent.type(screen.getByLabelText('Escribe tu consulta'), userMessage.content)
     await userEvent.click(screen.getByRole('button', { name: 'Enviar' }))
 
-    expect(await screen.findByText(/inicia sesión o crea una cuenta demo/i)).toBeInTheDocument()
+    expect(await screen.findByText(/inicia sesión o crea una cuenta/i)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /iniciar sesión/i })).toHaveAttribute('href', '/login')
     expect(screen.getByRole('link', { name: /registrarse/i })).toHaveAttribute('href', '/registro')
-    expect(sessionStorage.getItem('chat_conversation_id')).toBe('conversation-1')
+    expect(sessionStorage.getItem('chat_conversation_id')).toBe('11111111-1111-4111-8111-111111111111')
   })
 
   it('prepara la acción futura para CLIENTE sin llamar tickets automáticamente', async () => {

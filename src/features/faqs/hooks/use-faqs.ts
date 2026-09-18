@@ -1,6 +1,22 @@
-import { useQuery } from '@tanstack/react-query'
-import { getCategories, getFaqs } from '../api/faq-api'
-import type { FAQRead } from '../types/faq-types'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  createCategory,
+  createFaq,
+  getCategories,
+  getFaqs,
+  setCategoryStatus,
+  setFaqStatus,
+  updateCategory,
+  updateFaq,
+} from '../api/faq-api'
+import type {
+  ActiveStatusUpdate,
+  CategoryCreate,
+  CategoryUpdate,
+  FAQCreate,
+  FAQRead,
+  FAQUpdate,
+} from '../types/faq-types'
 
 interface FilterFaqsInput {
   faqs: FAQRead[]
@@ -22,10 +38,73 @@ export function filterFaqs({ faqs, categoryId, search }: FilterFaqsInput): FAQRe
   })
 }
 
+export const faqsQueryKey = ['faqs'] as const
+export const categoriesQueryKey = ['categories'] as const
+
 export function useFaqs() {
-  return useQuery({ queryKey: ['faqs'], queryFn: getFaqs })
+  return useQuery({ queryKey: faqsQueryKey, queryFn: getFaqs })
 }
 
 export function useCategories() {
-  return useQuery({ queryKey: ['categories'], queryFn: getCategories })
+  return useQuery({ queryKey: categoriesQueryKey, queryFn: getCategories })
+}
+
+export function useCreateFaqMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: FAQCreate) => createFaq(data),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: faqsQueryKey })
+    },
+  })
+}
+
+export function useUpdateFaqMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ faqId, data }: { faqId: string; data: FAQUpdate }) => updateFaq(faqId, data),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: faqsQueryKey })
+    },
+  })
+}
+
+export function useSetFaqStatusMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ faqId, data }: { faqId: string; data: ActiveStatusUpdate }) => setFaqStatus(faqId, data),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: faqsQueryKey })
+    },
+  })
+}
+
+export function useCreateCategoryMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: CategoryCreate) => createCategory(data),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: categoriesQueryKey })
+    },
+  })
+}
+
+export function useUpdateCategoryMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ categoryId, data }: { categoryId: string; data: CategoryUpdate }) => updateCategory(categoryId, data),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: categoriesQueryKey })
+    },
+  })
+}
+
+export function useSetCategoryStatusMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ categoryId, data }: { categoryId: string; data: ActiveStatusUpdate }) => setCategoryStatus(categoryId, data),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: categoriesQueryKey })
+    },
+  })
 }

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { PageHeader } from '../../../components/layout/page-header'
 import { useCategories } from '../../faqs/hooks/use-faqs'
 import { ReportDistribution } from '../components/report-distribution'
 import { ReportFiltersForm, emptyReportFilters } from '../components/report-filters'
@@ -10,7 +11,7 @@ const cards = [['total_tickets', 'Total de tickets'], ['new_tickets', 'Nuevos'],
 export function SupervisorDashboardPage() {
   const [filters, setFilters] = useState<ReportFilters>(emptyReportFilters); const categories = useCategories(); const summary = useReportSummary(filters); const status = useStatusReport(filters); const category = useCategoryReport(filters); const priority = usePriorityReport(filters); const resolution = useResolutionTimeReport(filters)
   const reportsLoading = summary.isLoading || status.isLoading || category.isLoading || priority.isLoading || resolution.isLoading || categories.isLoading
-  return <section className="supervisor-dashboard"><span className="eyebrow">Supervisión</span><h1>Panel interno</h1><p className="lead">Dashboard operativo con resumen de atención y distribución de tickets.</p><ReportFiltersForm categories={categories.data ?? []} onApply={setFilters} />
+  return <section className="supervisor-dashboard"><PageHeader eyebrow="Supervisión" title="Dashboard de supervisión" subtitle="Vista general de la operación de atención." /><ReportFiltersForm categories={categories.data ?? []} onApply={setFilters} />{categories.isError && <div className="state state-error" role="alert">No pudimos cargar las categorías de los filtros. Puedes consultar el reporte sin categoría.</div>}
     <ReportState isLoading={reportsLoading} isError={summary.isError} onRetry={() => { void summary.refetch(); void status.refetch(); void category.refetch(); void priority.refetch(); void resolution.refetch() }}>
       {summary.data && <div className="report-summary-grid">{cards.map(([key, title]) => <div className="card report-summary-card" key={key}><span>{title}</span><strong>{summary.data[key]}</strong></div>)}<div className="card report-summary-card"><span>Tiempo promedio de resolución</span><strong>{summary.data.average_resolution_time_hours} h</strong></div></div>}
     </ReportState>

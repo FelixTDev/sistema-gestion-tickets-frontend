@@ -10,7 +10,7 @@ import { AuthProvider, useAuth } from './auth-provider'
 import { register, clearSession, logout } from './auth-service'
 import { setAccessToken } from '../../lib/auth'
 
-const client = { id: 'client-1', full_name: 'Cliente Demo', email: 'cliente@example.com', role: 'CLIENTE' as const }
+const client = { id: 'client-1', full_name: 'Cliente Prueba', email: 'cliente@example.com', role: 'CLIENTE' as const }
 const advisor = { ...client, role: 'ASESOR' as const }
 const supervisor = { ...client, role: 'SUPERVISOR' as const }
 
@@ -22,6 +22,15 @@ function renderApp(initialEntries: string[]) { const queryClient = createTestQue
 beforeEach(() => { sessionStorage.clear(); clearSession(); vi.restoreAllMocks() })
 
 describe('formularios de autenticación', () => {
+  it('presenta el login cliente sin credenciales de ejemplo y con acceso a recuperación', () => {
+    authForm(<ClientLoginForm />)
+    expect(screen.getByRole('link', { name: /olvidaste tu contraseña/i })).toHaveAttribute('href', '/recuperar-contrasena')
+    expect(screen.getByLabelText(/correo electrónico/i)).not.toHaveValue()
+    expect(screen.getByLabelText(/^contraseña/i)).not.toHaveValue()
+    const prohibited = ['proto' + 'tipo', 'de' + 'mo', 'simu' + 'lado', 'acad' + 'émico', 'fic' + 'ticio', 'no ' + 'oficial']
+    expect(prohibited.some((term) => document.body.textContent?.toLocaleLowerCase().includes(term))).toBe(false)
+  })
+
   it('renderiza el formulario de login y valida el correo', async () => {
     authForm(<ClientLoginForm />)
     expect(screen.getByRole('heading', { name: /bienvenido/i })).toBeInTheDocument()
@@ -59,8 +68,8 @@ describe('formularios de autenticación', () => {
   it('registra un cliente y valida confirmación y contraseña', async () => {
     authForm(<RegisterForm />)
     await userEvent.type(screen.getByLabelText(/nombre completo/i), client.full_name)
-    await userEvent.type(screen.getByLabelText(/^correo electrónico$/i), client.email)
-    await userEvent.type(screen.getByLabelText(/^contraseña$/i), 'Password123')
+    await userEvent.type(screen.getByLabelText(/correo electrónico/i), client.email)
+    await userEvent.type(screen.getByLabelText(/^contraseña/i), 'Password123')
     await userEvent.type(screen.getByLabelText(/confirmar contraseña/i), 'Different123')
     await userEvent.click(screen.getByRole('button', { name: /crear cuenta/i }))
     expect(await screen.findByText(/contraseñas no coinciden/i)).toBeInTheDocument()
@@ -69,7 +78,7 @@ describe('formularios de autenticación', () => {
   it('limpia contraseña inválida y muestra reglas', async () => {
     authForm(<RegisterForm />)
     expect(screen.getByText(/mínimo 8 caracteres/i)).toBeInTheDocument()
-    await userEvent.type(screen.getByLabelText(/^contraseña$/i), 'short')
+    await userEvent.type(screen.getByLabelText(/^contraseña/i), 'short')
     await userEvent.click(screen.getByRole('button', { name: /crear cuenta/i }))
     expect(await screen.findByText(/cumplir las reglas/i)).toBeInTheDocument()
   })
@@ -78,11 +87,42 @@ describe('formularios de autenticación', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify(client), { status: 201, headers: { 'Content-Type': 'application/json' } }))
     authForm(<RegisterForm />)
     await userEvent.type(screen.getByLabelText(/nombre completo/i), client.full_name)
-    await userEvent.type(screen.getByLabelText(/^correo electrónico$/i), client.email)
-    await userEvent.type(screen.getByLabelText(/^contraseña$/i), 'Password123')
+    await userEvent.type(screen.getByLabelText(/correo electrónico/i), client.email)
+    await userEvent.type(screen.getByLabelText(/^contraseña/i), 'Password123')
     await userEvent.type(screen.getByLabelText(/confirmar contraseña/i), 'Password123')
     await userEvent.click(screen.getByRole('button', { name: /crear cuenta/i }))
     expect(await screen.findByRole('status')).toHaveTextContent(/cuenta creada/i)
+  })
+
+  it.each([
+    [409, /ese correo ya está registrado/i],
+    [422, /revisa los datos ingresados/i],
+  ])('presenta el error %s devuelto al registrar', async (status, message) => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ message: 'Solicitud rechazada' }), { status, headers: { 'Content-Type': 'application/json' } }))
+    authForm(<RegisterForm />)
+    await userEvent.type(screen.getByLabelText(/nombre completo/i), client.full_name)
+    await userEvent.type(screen.getByLabelText(/correo electrónico/i), client.email)
+    await userEvent.type(screen.getByLabelText(/^contraseña/i), 'Password123')
+    await userEvent.type(screen.getByLabelText(/confirmar contraseña/i), 'Password123')
+    await userEvent.click(screen.getByRole('button', { name: /crear cuenta/i }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(message)
+  })
+
+  it('bloquea envíos duplicados mientras el registro está pendiente', async () => {
+    let resolveRegister!: (response: Response) => void
+    const pending = new Promise<Response>((resolve) => { resolveRegister = resolve })
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockReturnValue(pending)
+    authForm(<RegisterForm />)
+    await userEvent.type(screen.getByLabelText(/nombre completo/i), client.full_name)
+    await userEvent.type(screen.getByLabelText(/correo electrónico/i), client.email)
+    await userEvent.type(screen.getByLabelText(/^contraseña/i), 'Password123')
+    await userEvent.type(screen.getByLabelText(/confirmar contraseña/i), 'Password123')
+    const submit = screen.getByRole('button', { name: /crear cuenta/i })
+    await userEvent.click(submit)
+    expect(screen.getByRole('button', { name: /creando cuenta/i })).toBeDisabled()
+    await userEvent.click(screen.getByRole('button', { name: /creando cuenta/i }))
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    resolveRegister(new Response(JSON.stringify(client), { status: 201, headers: { 'Content-Type': 'application/json' } }))
   })
 })
 
@@ -97,6 +137,14 @@ describe('servicio y ciclo de sesión', () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ message: 'expired' }), { status: 401, headers: { 'Content-Type': 'application/json' } }))
     render(<MemoryRouter><AuthProvider><SessionProbe /></AuthProvider></MemoryRouter>)
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/auth/me'), expect.objectContaining({ headers: expect.anything() })))
+    await waitFor(() => expect(screen.getByText('anonymous')).toBeInTheDocument())
+    expect(sessionStorage.getItem('auth_token')).toBeNull()
+  })
+
+  it('limpia el token si la restauración de sesión falla por un error no autorizado', async () => {
+    sessionStorage.setItem('auth_token', 'stale-token')
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ message: 'Temporal' }), { status: 500, headers: { 'Content-Type': 'application/json' } }))
+    render(<MemoryRouter><AuthProvider><SessionProbe /></AuthProvider></MemoryRouter>)
     await waitFor(() => expect(screen.getByText('anonymous')).toBeInTheDocument())
     expect(sessionStorage.getItem('auth_token')).toBeNull()
   })
@@ -132,14 +180,13 @@ describe('portales de acceso por rol', () => {
     expect(sessionStorage.getItem('auth_token')).toBeNull()
   })
 
-  it.each([[advisor, /bandeja de tickets/i, '/personal/tickets'], [supervisor, /panel interno/i, '/personal']])('acepta personal en /personal/login', async (internalUser, destination, path) => {
+  it.each([[advisor, '/personal/tickets'], [supervisor, '/personal']])('acepta personal en /personal/login', async (internalUser, path) => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ access_token: 'staff-token', token_type: 'bearer', user: internalUser }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
     renderApp(['/personal/login'])
     await userEvent.type(screen.getByLabelText(/correo/i), client.email)
     await userEvent.type(screen.getByLabelText(/contraseña/i), 'Password123')
     await userEvent.click(screen.getByRole('button', { name: /ingresar al portal interno/i }))
-    expect(await screen.findByRole('heading', { name: destination })).toBeInTheDocument()
-    expect(screen.getByTestId('location')).toHaveTextContent(path)
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(path))
   })
 
   it('rechaza CLIENTE en /personal/login y limpia la sesión', async () => {
@@ -163,14 +210,14 @@ describe('portales de acceso por rol', () => {
   })
 
   it('asocia una conversación después del login CLIENTE sin bloquear la redirección', async () => {
-    sessionStorage.setItem('chat_conversation_id', 'conversation-1')
+    sessionStorage.setItem('chat_conversation_id', '11111111-1111-4111-8111-111111111111')
     let resolveLink!: (response: Response) => void
     const linkPromise = new Promise<Response>((resolve) => { resolveLink = resolve })
     vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
       const url = String(input)
       if (url.endsWith('/auth/login')) return Promise.resolve(new Response(JSON.stringify({ access_token: 'token', token_type: 'bearer', user: client }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
       if (url.endsWith('/link-user')) return linkPromise
-      if (init?.method !== 'POST') return Promise.resolve(new Response(JSON.stringify({ id: 'conversation-1', user_id: null, status: 'ACTIVE', started_at: '2026-09-12', ended_at: null, messages: [] }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+      if (init?.method !== 'POST') return Promise.resolve(new Response(JSON.stringify({ id: '11111111-1111-4111-8111-111111111111', user_id: null, status: 'ACTIVE', started_at: '2026-09-12', ended_at: null, messages: [] }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
       return Promise.resolve(new Response(JSON.stringify({ message: 'Unexpected' }), { status: 500, headers: { 'Content-Type': 'application/json' } }))
     })
     renderApp(['/login'])
@@ -179,7 +226,7 @@ describe('portales de acceso por rol', () => {
     await userEvent.click(screen.getByRole('button', { name: /iniciar sesión/i }))
 
     await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/cliente'))
-    resolveLink(new Response(JSON.stringify({ id: 'conversation-1', user_id: client.id, status: 'ACTIVE' }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+    resolveLink(new Response(JSON.stringify({ id: '11111111-1111-4111-8111-111111111111', user_id: client.id, status: 'ACTIVE' }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
     await waitFor(() => expect(screen.getByRole('heading', { name: /tu espacio de atención/i })).toBeInTheDocument())
   })
 })

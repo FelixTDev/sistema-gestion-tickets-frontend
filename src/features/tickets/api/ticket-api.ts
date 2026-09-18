@@ -1,6 +1,12 @@
 import { apiClient } from '../../../lib/api-client'
 import type { CommentCreate, CommentRead, HistoryRead, ReasonRequest, TicketCreate, TicketListFilters, TicketRead, TicketStatusChange, AssignmentCreate } from '../types/ticket-types'
 import type { AuthUser } from '../../../types/auth'
+import { assertSafePathSegment } from '../../../lib/identifiers'
+
+function ticketPath(ticketId: string): string {
+  assertSafePathSegment(ticketId, 'Identificador del ticket')
+  return ticketId
+}
 
 export function listMyTickets(): Promise<TicketRead[]> {
   return apiClient.get<TicketRead[]>('/tickets/mine')
@@ -10,20 +16,20 @@ export function createTicket(data: TicketCreate): Promise<TicketRead> {
   return apiClient.post<TicketRead>('/tickets', data)
 }
 
-export function getTicket(ticketId: string): Promise<TicketRead> {
-  return apiClient.get<TicketRead>(`/tickets/${ticketId}`)
+export async function getTicket(ticketId: string): Promise<TicketRead> {
+  return apiClient.get<TicketRead>(`/tickets/${ticketPath(ticketId)}`)
 }
 
-export function getTicketHistory(ticketId: string): Promise<HistoryRead[]> {
-  return apiClient.get<HistoryRead[]>(`/tickets/${ticketId}/history`)
+export async function getTicketHistory(ticketId: string): Promise<HistoryRead[]> {
+  return apiClient.get<HistoryRead[]>(`/tickets/${ticketPath(ticketId)}/history`)
 }
 
-export function addTicketComment(ticketId: string, data: CommentCreate): Promise<CommentRead> {
-  return apiClient.post<CommentRead>(`/tickets/${ticketId}/comments`, data)
+export async function addTicketComment(ticketId: string, data: CommentCreate): Promise<CommentRead> {
+  return apiClient.post<CommentRead>(`/tickets/${ticketPath(ticketId)}/comments`, data)
 }
 
-export function getTicketComments(ticketId: string): Promise<CommentRead[]> {
-  return apiClient.get<CommentRead[]>(`/tickets/${ticketId}/comments`)
+export async function getTicketComments(ticketId: string): Promise<CommentRead[]> {
+  return apiClient.get<CommentRead[]>(`/tickets/${ticketPath(ticketId)}/comments`)
 }
 
 export function listTickets(filters: TicketListFilters): Promise<TicketRead[]> {
@@ -37,30 +43,31 @@ export function listTickets(filters: TicketListFilters): Promise<TicketRead[]> {
   return apiClient.get<TicketRead[]>(query ? `/tickets?${query}` : '/tickets')
 }
 
-export function changeTicketStatus(ticketId: string, data: TicketStatusChange): Promise<TicketRead> {
-  return apiClient.post<TicketRead>(`/tickets/${ticketId}/status`, data)
+export async function changeTicketStatus(ticketId: string, data: TicketStatusChange): Promise<TicketRead> {
+  return apiClient.post<TicketRead>(`/tickets/${ticketPath(ticketId)}/status`, data)
 }
 
-export function closeTicket(ticketId: string): Promise<TicketRead> {
-  return apiClient.post<TicketRead>(`/tickets/${ticketId}/close`, {})
+export async function closeTicket(ticketId: string): Promise<TicketRead> {
+  return apiClient.post<TicketRead>(`/tickets/${ticketPath(ticketId)}/close`, {})
 }
 
-export function reopenTicket(ticketId: string, data: ReasonRequest): Promise<TicketRead> {
-  return apiClient.post<TicketRead>(`/tickets/${ticketId}/reopen`, data)
+export async function reopenTicket(ticketId: string, data: ReasonRequest): Promise<TicketRead> {
+  return apiClient.post<TicketRead>(`/tickets/${ticketPath(ticketId)}/reopen`, data)
 }
 
-export function cancelTicket(ticketId: string, data: ReasonRequest): Promise<TicketRead> {
-  return apiClient.post<TicketRead>(`/tickets/${ticketId}/cancel`, data)
+export async function cancelTicket(ticketId: string, data: ReasonRequest): Promise<TicketRead> {
+  return apiClient.post<TicketRead>(`/tickets/${ticketPath(ticketId)}/cancel`, data)
 }
 
 export function listAdvisors(): Promise<AuthUser[]> {
   return apiClient.get<AuthUser[]>('/users/advisors')
 }
 
-export function assignTicket(ticketId: string, data: AssignmentCreate): Promise<TicketRead> {
-  return apiClient.post<TicketRead>(`/tickets/${ticketId}/assignments`, data)
+export async function assignTicket(ticketId: string, data: AssignmentCreate): Promise<TicketRead> {
+  return apiClient.post<TicketRead>(`/tickets/${ticketPath(ticketId)}/assignments`, data)
 }
 
-export function convertConversationToTicket(conversationId: string, data: TicketCreate): Promise<TicketRead> {
+export async function convertConversationToTicket(conversationId: string, data: TicketCreate): Promise<TicketRead> {
+  assertSafePathSegment(conversationId, 'Identificador de conversación')
   return apiClient.post<TicketRead>(`/chat/conversations/${conversationId}/convert-to-ticket`, data)
 }

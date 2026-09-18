@@ -5,6 +5,7 @@ import {
   linkConversationToUser,
   sendConversationMessage,
 } from '../api/chatbot-api'
+import { isUuid } from '../../../lib/identifiers'
 
 export const conversationQueryKey = (conversationId: string) => ['chat-conversation', conversationId] as const
 
@@ -12,7 +13,7 @@ export function useConversationQuery(conversationId: string | null, enabled: boo
   return useQuery({
     queryKey: conversationQueryKey(conversationId ?? 'none'),
     queryFn: ({ signal }) => getConversation(conversationId!, signal),
-    enabled: enabled && conversationId !== null,
+    enabled: enabled && conversationId !== null && isUuid(conversationId),
     retry: false,
     staleTime: 30_000,
   })

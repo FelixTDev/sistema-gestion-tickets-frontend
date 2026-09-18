@@ -21,33 +21,30 @@ describe('aplicación base', () => {
 
   it('renderiza la pantalla pública de inicio', () => {
     renderApp(['/'])
-    expect(screen.getByRole('heading', { name: /orientación que continúa contigo/i })).toBeInTheDocument()
-    expect(
-      within(screen.getByRole('banner')).getByText(/sistema inteligente de atención y tickets/i),
-    ).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: /tarjetas/i })).toBeInTheDocument()
-    expect(screen.getByText(/prototipo académico no oficial/i)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /estamos para ayudarte/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /cómo podemos ayudarte/i })).toBeInTheDocument()
+    expect(screen.getByRole('note')).toHaveTextContent(/las operaciones bancarias se realizan únicamente por los canales oficiales del banco/i)
   })
 
   it('mantiene el acceso de personal solo en el footer', () => {
     renderApp(['/'])
     const footer = screen.getByRole('contentinfo')
-    expect(footer).toHaveTextContent(/acceso para personal/i)
-    expect(screen.getByRole('banner')).not.toHaveTextContent(/acceso para personal/i)
+    expect(footer).toHaveTextContent(/acceso personal interno/i)
+    expect(screen.getByRole('banner')).not.toHaveTextContent(/acceso personal interno/i)
   })
 
   it('permite navegar a preguntas frecuentes desde la navegación principal', async () => {
     renderApp(['/'])
     await userEvent.click(within(screen.getByRole('navigation', { name: /navegación principal/i })).getByRole('link', { name: /preguntas frecuentes/i }))
-    expect(screen.getByRole('heading', { name: /preguntas frecuentes/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: /preguntas frecuentes/i })).toBeInTheDocument()
   })
 
-  it('muestra el aviso académico en ambos portales de login', () => {
+  it('muestra el aviso de servicio en ambos portales de login', () => {
     const { unmount } = renderApp(['/login'])
-    expect(screen.getAllByText(/prototipo académico no oficial/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/las operaciones bancarias se realizan únicamente por los canales oficiales del banco/i).length).toBeGreaterThan(0)
     unmount()
     renderApp(['/personal/login'])
-    expect(screen.getAllByText(/prototipo académico no oficial/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/las operaciones bancarias se realizan únicamente por los canales oficiales del banco/i).length).toBeGreaterThan(0)
   })
 
   it('protege el portal del cliente sin sesión', () => {
@@ -75,7 +72,28 @@ describe('aplicación base', () => {
     renderApp(['/cliente/tickets/nuevo'])
     const navigation = within(screen.getByRole('navigation', { name: /navegación del cliente/i }))
     expect(navigation.getByRole('link', { name: /crear ticket/i })).toHaveAttribute('href', '/cliente/tickets/nuevo')
-    expect(navigation.getByRole('link', { name: /sitio público/i })).toHaveAttribute('href', '/')
+    expect(navigation.getByRole('link', { name: /crear ticket/i })).toHaveAttribute('aria-current', 'page')
+    expect(navigation.getByRole('link', { name: /mis tickets/i })).not.toHaveAttribute('aria-current')
+    expect(navigation.getByRole('link', { name: /asistente/i })).toHaveAttribute('href', '/chat')
+  })
+
+  it('mantiene la navegación inferior móvil aprobada para el cliente', () => {
+    setRole('CLIENTE')
+    renderApp(['/cliente'])
+    const navigation = within(screen.getByRole('navigation', { name: /navegación inferior del cliente/i }))
+    expect(navigation.getByRole('link', { name: /resumen/i })).toHaveAttribute('href', '/cliente')
+    expect(navigation.getByRole('link', { name: /mis tickets/i })).toHaveAttribute('href', '/cliente/tickets')
+    expect(navigation.getByRole('link', { name: /crear ticket/i })).toHaveAttribute('href', '/cliente/tickets/nuevo')
+    expect(navigation.getByRole('link', { name: /asistente/i })).toHaveAttribute('href', '/chat')
+  })
+
+  it('expone objetivos táctiles de al menos 44px en la navegación interna', () => {
+    setRole('ASESOR')
+    renderApp(['/personal'])
+    for (const link of within(screen.getByRole('navigation', { name: /navegación interna/i })).getAllByRole('link')) {
+      expect(link).toHaveClass('min-h-11')
+    }
+    expect(screen.getByRole('button', { name: /abrir menú interno/i })).toHaveClass('min-h-11', 'min-w-11')
   })
 
   it('redirige las rutas internas al acceso de personal sin sesión', () => {
@@ -92,7 +110,7 @@ describe('aplicación base', () => {
   it.each([
     ['CLIENTE', '/personal', '/cliente'],
     ['CLIENTE', '/personal/tickets', '/cliente'],
-    ['ASESOR', '/personal', '/personal/tickets'],
+    ['ASESOR', '/personal', '/personal'],
     ['ASESOR', '/cliente', '/personal/tickets'],
     ['SUPERVISOR', '/cliente', '/personal'],
   ] as const)('redirige %s desde %s a su portal autorizado %s', async (role, source, destination) => {
@@ -119,5 +137,13 @@ describe('aplicación base', () => {
     renderApp(['/chat'])
     expect(await screen.findByTestId('location')).toHaveTextContent(destination)
     expect(screen.queryByRole('button', { name: /abrir asistente de atención/i })).not.toBeInTheDocument()
+  })
+
+  it('compone /chat dentro del portal cuando la sesión pertenece a un cliente', () => {
+    setRole('CLIENTE')
+    renderApp(['/chat'])
+    expect(screen.getByRole('heading', { name: /asistente de atención/i })).toBeInTheDocument()
+    expect(screen.getByRole('navigation', { name: /navegación inferior del cliente/i })).toBeInTheDocument()
+    expect(screen.queryByRole('navigation', { name: /navegación principal/i })).not.toBeInTheDocument()
   })
 })

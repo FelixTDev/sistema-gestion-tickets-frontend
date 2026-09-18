@@ -129,4 +129,13 @@ describe('API de tickets del cliente', () => {
     expect(fetchMock.mock.calls[2][1]).toEqual(expect.objectContaining({ method: 'POST', body: JSON.stringify({ reason: 'Revisión solicitada' }) }))
     expect(fetchMock.mock.calls[3][1]).toEqual(expect.objectContaining({ method: 'POST', body: JSON.stringify({ reason: 'Solicitud cancelada' }) }))
   })
+
+  it('no construye requests con IDs de ruta manipulados', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+
+    await expect(getTicket('../usuarios')).rejects.toThrow(/identificador.*inválido/i)
+    await expect(convertConversationToTicket('../conversaciones', payload)).rejects.toThrow(/identificador.*inválido/i)
+
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
 })

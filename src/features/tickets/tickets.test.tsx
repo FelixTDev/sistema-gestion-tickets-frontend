@@ -1,5 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -15,24 +15,24 @@ const categories = [
   { id: 'category-hidden', name: 'Oculta', description: null, is_active: false, created_at: '2026-09-12', updated_at: '2026-09-12' },
 ]
 const olderTicket: TicketRead = {
-  id: 'ticket-older', tracking_code: 'TCK-OLD', client_id: client.id, conversation_id: null,
+  id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', tracking_code: 'TCK-OLD', client_id: client.id, conversation_id: null,
   category_id: 'category-1', subject: 'Consulta anterior', description: 'Detalle anterior', priority: 'BAJA',
   status: 'CERRADO', source: 'MANUAL', assigned_advisor_id: null, created_at: '2026-09-10T20:00:00Z',
   assigned_at: null, resolved_at: '2026-09-11T20:00:00Z', closed_at: '2026-09-12T20:00:00Z', cancelled_at: null,
 }
 const newerTicket: TicketRead = {
-  id: 'ticket-newer', tracking_code: 'TCK-NEW', client_id: client.id, conversation_id: 'conversation-1',
+  id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', tracking_code: 'TCK-NEW', client_id: client.id, conversation_id: '11111111-1111-4111-8111-111111111111',
   category_id: 'category-hidden', subject: 'Consulta reciente', description: 'Detalle reciente', priority: 'ALTA',
   status: 'EN_PROCESO', source: 'CHATBOT', assigned_advisor_id: 'advisor-1', created_at: '2026-09-12T20:00:00Z',
   assigned_at: '2026-09-12T21:00:00Z', resolved_at: null, closed_at: null, cancelled_at: null,
 }
 const createdTicket: TicketRead = {
-  ...olderTicket, id: 'ticket-created', tracking_code: 'TCK-CREATED', subject: 'Nueva solicitud',
+  ...olderTicket, id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', tracking_code: 'TCK-CREATED', subject: 'Nueva solicitud',
   description: 'Descripción de la nueva solicitud', priority: 'MEDIA', status: 'NUEVO', source: 'MANUAL',
   created_at: '2026-09-12T22:00:00Z', resolved_at: null, closed_at: null,
 }
 const conversation = {
-  id: 'conversation-1', user_id: client.id, status: 'ACTIVE', started_at: '2026-09-12T20:00:00Z', ended_at: null,
+  id: '11111111-1111-4111-8111-111111111111', user_id: client.id, status: 'ACTIVE', started_at: '2026-09-12T20:00:00Z', ended_at: null,
   messages: [
     { id: 'message-1', sender_type: 'USER', content: 'Mi consulta no fue resuelta', intent: null, confidence: null, created_at: '2026-09-12T20:01:00Z' },
     { id: 'message-2', sender_type: 'BOT', content: 'Puedo ayudarte a crear un ticket.', intent: null, confidence: 0, created_at: '2026-09-12T20:01:01Z' },
@@ -93,7 +93,7 @@ describe('bandeja de tickets del cliente', () => {
     expect(screen.getByText('Origen: Chatbot')).toBeInTheDocument()
     expect(screen.getByText('Categoría no disponible')).toBeInTheDocument()
     expect(screen.getByText('Cuentas')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /ver ticket tck-new/i })).toHaveAttribute('href', '/cliente/tickets/ticket-newer')
+    expect(screen.getByRole('link', { name: /ver ticket tck-new/i })).toHaveAttribute('href', `/cliente/tickets/${newerTicket.id}`)
   })
 
   it('muestra estados de carga y vacío', async () => {
@@ -140,8 +140,8 @@ describe('dashboard del cliente', () => {
     expect(screen.getByText('1', { selector: '.dashboard-open-count' })).toBeInTheDocument()
     expect(screen.getByText('1', { selector: '.dashboard-finished-count' })).toBeInTheDocument()
     expect(within(screen.getByRole('main')).getByRole('link', { name: /crear ticket/i })).toHaveAttribute('href', '/cliente/tickets/nuevo')
-    expect(screen.getByRole('link', { name: /usar el asistente/i })).toHaveAttribute('href', '/chat')
-    expect(screen.getByRole('link', { name: /ver todos mis tickets/i })).toHaveAttribute('href', '/cliente/tickets')
+    expect(screen.getByRole('link', { name: /abrir asistente/i })).toHaveAttribute('href', '/chat')
+    expect(screen.getByRole('link', { name: /ver todos/i })).toHaveAttribute('href', '/cliente/tickets')
   })
 
   it('muestra un resumen vacío sin inventar actividad', async () => {
@@ -188,7 +188,7 @@ describe('creación manual de tickets', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /enviar solicitud/i }))
 
-    expect(await screen.findByTestId('location')).toHaveTextContent('/cliente/tickets/ticket-created')
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(`/cliente/tickets/${createdTicket.id}`))
     expect(screen.getByText('TCK-CREATED')).toBeInTheDocument()
     expect(fetchMock.mock.calls.some(([input, init]) => String(input).endsWith('/tickets') && init?.method === 'POST')).toBe(true)
   })
@@ -212,7 +212,7 @@ describe('creación manual de tickets', () => {
     expect(fetchMock.mock.calls.filter(([input, init]) => String(input).endsWith('/tickets') && init?.method === 'POST')).toHaveLength(1)
     resolveCreation(jsonResponse(createdTicket, 201))
     await screen.findByText('TCK-CREATED')
-    expect(screen.getByTestId('location')).toHaveTextContent('/cliente/tickets/ticket-created')
+    expect(screen.getByTestId('location')).toHaveTextContent(`/cliente/tickets/${createdTicket.id}`)
   })
 
   it.each([
@@ -269,7 +269,7 @@ describe('conversión desde el chatbot', () => {
     expect(screen.getByLabelText('Asunto')).toHaveValue('Nueva solicitud')
 
     await userEvent.click(screen.getByRole('button', { name: /convertir en ticket/i }))
-    expect(await screen.findByTestId('location')).toHaveTextContent('/cliente/tickets/ticket-created')
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(`/cliente/tickets/${createdTicket.id}`))
     expect(screen.getByText('TCK-CREATED')).toBeInTheDocument()
     expect(sessionStorage.getItem('chat_conversation_id')).toBeNull()
     expect(fetchMock.mock.calls.filter(([input]) => String(input).endsWith('/convert-to-ticket'))).toHaveLength(2)
@@ -287,7 +287,7 @@ describe('conversión desde el chatbot', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /crear ticket/i }))
 
-    expect(screen.getByTestId('location')).toHaveTextContent('/cliente/tickets/nuevo?conversationId=conversation-1')
+    expect(screen.getByTestId('location')).toHaveTextContent(`/cliente/tickets/nuevo?conversationId=${conversation.id}`)
     expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith('/chat/conversations'))).toBe(true)
     expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith('/messages'))).toBe(true)
   })

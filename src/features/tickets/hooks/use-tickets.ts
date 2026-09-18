@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { addTicketComment, assignTicket, cancelTicket, changeTicketStatus, closeTicket, convertConversationToTicket, createTicket, getTicket, getTicketComments, getTicketHistory, listAdvisors, listMyTickets, listTickets, reopenTicket } from '../api/ticket-api'
-import type { CommentCreate, ReasonRequest, TicketCreate, TicketListFilters, TicketStatusChange, TicketRead } from '../types/ticket-types'
+import type { AssignmentCreate, CommentCreate, ReasonRequest, TicketCreate, TicketListFilters, TicketStatusChange, TicketRead } from '../types/ticket-types'
+import { isUuid } from '../../../lib/identifiers'
 
 export const ticketsQueryKey = ['client-tickets'] as const
 export const ticketQueryKey = (ticketId: string) => ['ticket', ticketId] as const
@@ -13,15 +14,15 @@ export function useMyTickets() {
 }
 
 export function useTicket(ticketId: string) {
-  return useQuery({ queryKey: ticketQueryKey(ticketId), queryFn: () => getTicket(ticketId), retry: false, enabled: Boolean(ticketId) })
+  return useQuery({ queryKey: ticketQueryKey(ticketId), queryFn: () => getTicket(ticketId), retry: false, enabled: isUuid(ticketId) })
 }
 
 export function useTicketHistory(ticketId: string) {
-  return useQuery({ queryKey: ticketHistoryQueryKey(ticketId), queryFn: () => getTicketHistory(ticketId), retry: false, enabled: Boolean(ticketId) })
+  return useQuery({ queryKey: ticketHistoryQueryKey(ticketId), queryFn: () => getTicketHistory(ticketId), retry: false, enabled: isUuid(ticketId) })
 }
 
 export function useTicketComments(ticketId: string) {
-  return useQuery({ queryKey: ticketCommentsQueryKey(ticketId), queryFn: () => getTicketComments(ticketId), retry: false, enabled: Boolean(ticketId) })
+  return useQuery({ queryKey: ticketCommentsQueryKey(ticketId), queryFn: () => getTicketComments(ticketId), retry: false, enabled: isUuid(ticketId) })
 }
 
 export function useOperationalTickets(filters: TicketListFilters) {
@@ -65,6 +66,7 @@ function useTicketOperation<TVariables>(mutationFn: (variables: TVariables) => P
       void queryClient.invalidateQueries({ queryKey: ticketCommentsQueryKey(ticket.id) })
       void queryClient.invalidateQueries({ queryKey: ticketsQueryKey })
       void queryClient.invalidateQueries({ queryKey: ['operational-tickets'] })
+      void queryClient.invalidateQueries({ queryKey: ['report'] })
     },
   })
 }
@@ -86,5 +88,5 @@ export function useCancelTicketMutation(ticketId: string) {
 }
 
 export function useAssignTicketMutation(ticketId: string) {
-  return useTicketOperation((data: { advisor_id: string }) => assignTicket(ticketId, data))
+  return useTicketOperation((data: AssignmentCreate) => assignTicket(ticketId, data))
 }
