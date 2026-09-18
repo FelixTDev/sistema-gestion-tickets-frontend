@@ -1,27 +1,85 @@
 :root {
-  --color-primary-950: #071d31;
-  --color-primary-900: #0b2942;
-  --color-primary-800: #113a59;
-  --color-primary-700: #164c70;
-  --color-accent-600: #078b91;
-  --color-accent-500: #08a6a6;
-  --color-accent-100: #dff7f5;
-  --color-accent-50: #effbf9;
-  --color-canvas: #f4f7f9;
-  --color-surface: #ffffff;
-  --color-surface-muted: #eaf0f3;
-  --color-ink: #122b3c;
-  --color-muted: #607483;
-  --color-border: #d7e1e6;
-  --color-success: #18795f;
-  --color-success-soft: #e8f6f0;
-  --color-warning: #946200;
-  --color-warning-soft: #fff7df;
-  --color-error: #b4233c;
-  --color-error-soft: #fff0f2;
-  --color-info: #1769aa;
-  --color-info-soft: #edf6fd;
-  --font-sans: Inter, Aptos, "Segoe UI", system-ui, -apple-system, sans-serif;
+  /* Primitive palette: immutable values from the approved Figma Make source. */
+  --primitive-ink-900: #06243a;
+  --primitive-ink-800: #0b4963;
+  --primitive-ink: #102a43;
+  --primitive-muted: #526875;
+  --primitive-turquoise: #078f98;
+  --primitive-turquoise-dark: #067179;
+  --primitive-green: #8bc63e;
+  --primitive-green-dark: #6ba22a;
+  --primitive-surface: #f4f7f8;
+  --primitive-line: #e2e9ec;
+  --primitive-danger: #c62828;
+  /* Dark enough for normal text on white and soft warning surfaces (WCAG AA). */
+  --primitive-warning: #875400;
+  --primitive-white: #ffffff;
+
+  /* Semantic layer. */
+  --semantic-canvas: var(--primitive-surface);
+  --semantic-panel: var(--primitive-white);
+  --semantic-text: var(--primitive-ink);
+  --semantic-text-strong: var(--primitive-ink-900);
+  --semantic-text-muted: var(--primitive-muted);
+  --semantic-border: var(--primitive-line);
+  --semantic-action: var(--primitive-turquoise);
+  --semantic-action-hover: var(--primitive-turquoise-dark);
+  --semantic-brand-accent: var(--primitive-green);
+  --semantic-danger: var(--primitive-danger);
+  --semantic-warning: var(--primitive-warning);
+  --semantic-info: var(--primitive-ink-800);
+
+  /* Component layer. */
+  --component-control-radius: 10px;
+  --component-card-radius: 14px;
+  --component-modal-radius: 16px;
+  --component-control-height-sm: 36px;
+  --component-control-height-md: 44px;
+  --component-control-height-lg: 48px;
+  --component-card-border: #e6edef;
+  --component-input-border: #cdd9de;
+  --component-card-shadow: 0 1px 2px rgb(16 42 67 / 4%), 0 8px 24px -16px rgb(16 42 67 / 12%);
+  --component-overlay: rgb(6 36 58 / 50%);
+  --component-focus-ring: var(--primitive-turquoise);
+
+  /* ZIP-compatible public names. */
+  --color-ink-900: var(--primitive-ink-900);
+  --color-ink-800: var(--primitive-ink-800);
+  --color-ink: var(--primitive-ink);
+  --color-muted: var(--primitive-muted);
+  --color-turq: var(--primitive-turquoise);
+  --color-turq-dark: var(--primitive-turquoise-dark);
+  --color-green: var(--primitive-green);
+  --color-green-dark: var(--primitive-green-dark);
+  --color-surface: var(--primitive-surface);
+  --color-line: var(--primitive-line);
+  --color-danger: var(--primitive-danger);
+  --color-warn: var(--primitive-warning);
+  --color-info: var(--primitive-ink-800);
+
+  /* Compatibility aliases used by the incumbent application. */
+  --color-primary-950: var(--primitive-ink-900);
+  --color-primary-900: var(--primitive-ink-800);
+  --color-primary-800: var(--primitive-ink-800);
+  --color-primary-700: var(--primitive-muted);
+  --color-accent-600: var(--primitive-turquoise);
+  --color-accent-500: var(--primitive-turquoise);
+  --color-accent-100: #d9f0f1;
+  --color-accent-50: #eef8f8;
+  --color-canvas: var(--primitive-surface);
+  --color-surface-muted: var(--primitive-line);
+  --color-border: var(--primitive-line);
+  --color-success: #4c7a15;
+  --color-success-soft: #e9f4d7;
+  --color-warning: var(--primitive-warning);
+  --color-warning-soft: #fbeecf;
+  --color-error: var(--primitive-danger);
+  --color-error-soft: #fbe3e2;
+  --color-info-soft: #e2eef3;
+
+  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: Manrope, Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
   --space-1: .25rem;
   --space-2: .5rem;
   --space-3: .75rem;
@@ -33,12 +91,13 @@
   --space-12: 3rem;
   --space-16: 4rem;
   --space-20: 5rem;
-  --radius-sm: .45rem;
-  --radius-md: .75rem;
-  --radius-lg: 1.1rem;
-  --radius-xl: 1.5rem;
-  --shadow-sm: 0 1px 3px rgba(7, 29, 49, .08);
-  --shadow-md: 0 16px 40px rgba(7, 29, 49, .10);
-  --shadow-lg: 0 30px 70px rgba(7, 29, 49, .16);
+  --radius: 12px;
+  --radius-sm: var(--component-control-radius);
+  --radius-md: 12px;
+  --radius-lg: var(--component-card-radius);
+  --radius-xl: var(--component-modal-radius);
+  --shadow-sm: 0 1px 2px rgb(16 42 67 / 4%);
+  --shadow-md: var(--component-card-shadow);
+  --shadow-lg: 0 24px 64px rgb(6 36 58 / 22%);
   --content-width: 74rem;
 }

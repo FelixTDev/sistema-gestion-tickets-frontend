@@ -1,6 +1,7 @@
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { MemoryRouter } from 'react-router-dom'
 import { renderWithQueryClient } from '../../test/test-query-client'
 import { FaqPage } from './pages/faq-page'
 
@@ -27,33 +28,47 @@ function mockFaqRequests(currentFaqs = faqs, currentCategories = categories) {
   })
 }
 
+function renderFaqPage() {
+  return renderWithQueryClient(<MemoryRouter><FaqPage /></MemoryRouter>)
+}
+
 describe('página pública de preguntas frecuentes', () => {
   beforeEach(() => vi.restoreAllMocks())
 
   it('expone un título principal semántico', () => {
     mockFaqRequests()
-    renderWithQueryClient(<FaqPage />)
+    renderFaqPage()
 
     expect(screen.getByRole('heading', { level: 1, name: 'Preguntas frecuentes' })).toBeInTheDocument()
   })
 
   it('carga las FAQ activas y filtra por categoría activa', async () => {
     mockFaqRequests()
-    renderWithQueryClient(<FaqPage />)
+    renderFaqPage()
 
     expect(await screen.findByText('¿Cómo consulto mi cuenta?')).toBeInTheDocument()
     expect(screen.getByText('¿Cómo bloqueo una tarjeta?')).toBeInTheDocument()
     expect(screen.queryByText('FAQ inactiva')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Oculta' })).not.toBeInTheDocument()
+    expect(screen.getByText('Cuentas', { selector: '[data-faq-category]' })).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: 'Cuentas' }))
     expect(screen.getByText('¿Cómo consulto mi cuenta?')).toBeInTheDocument()
     expect(screen.queryByText('¿Cómo bloqueo una tarjeta?')).not.toBeInTheDocument()
   })
 
+  it('porta el buscador y la llamada a conversar con el asistente', async () => {
+    mockFaqRequests()
+    renderFaqPage()
+    await screen.findByText('¿Cómo consulto mi cuenta?')
+
+    expect(screen.getByRole('searchbox', { name: /buscar preguntas/i })).toHaveAttribute('placeholder', 'Busca una pregunta o palabra clave…')
+    expect(screen.getByRole('link', { name: /habla con nuestro asistente/i })).toHaveAttribute('href', '/chat')
+  })
+
   it('busca localmente por pregunta o palabras clave y combina el filtro', async () => {
     mockFaqRequests()
-    renderWithQueryClient(<FaqPage />)
+    renderFaqPage()
     await screen.findByText('¿Cómo consulto mi cuenta?')
 
     await userEvent.type(screen.getByRole('searchbox', { name: /buscar preguntas/i }), 'seguridad')
@@ -66,13 +81,13 @@ describe('página pública de preguntas frecuentes', () => {
 
   it('muestra estado de carga', () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(() => new Promise<Response>(() => undefined))
-    renderWithQueryClient(<FaqPage />)
+    renderFaqPage()
     expect(screen.getByRole('status')).toHaveTextContent(/cargando preguntas frecuentes/i)
   })
 
   it('muestra error y permite reintentar', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({ message: 'Error' }, 500))
-    renderWithQueryClient(<FaqPage />)
+    renderFaqPage()
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/no pudimos cargar las preguntas/i)
     await userEvent.click(screen.getByRole('button', { name: /reintentar/i }))
@@ -81,7 +96,7 @@ describe('página pública de preguntas frecuentes', () => {
 
   it('muestra un estado vacío cuando no existen FAQ activas', async () => {
     mockFaqRequests([], categories)
-    renderWithQueryClient(<FaqPage />)
+    renderFaqPage()
     expect(await screen.findByText(/aún no hay preguntas frecuentes disponibles/i)).toBeInTheDocument()
   })
 })

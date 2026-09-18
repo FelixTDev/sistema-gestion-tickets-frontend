@@ -3,7 +3,10 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
-import { ACADEMIC_DISCLAIMER } from '../../components/layout/academic-disclaimer'
+import { AuthShell } from '../../components/layout/auth-shell'
+import { Button } from '../../components/ui/button'
+import { Field, Input } from '../../components/ui/form-controls'
+import { Icon } from '../../components/ui/icons'
 import { ApiError } from '../../lib/api-client'
 import type { LoginRequest, RegisterRequest, Role, Session } from '../../types/auth'
 import { useAuth } from './auth-provider'
@@ -18,10 +21,15 @@ type LoginPortal = 'client' | 'staff'
 function destinationFor(role: Role): string { if (role === 'CLIENTE') return '/cliente'; if (role === 'ASESOR') return '/personal/tickets'; return '/personal' }
 function acceptsRole(portal: LoginPortal, role: Role): boolean { return portal === 'client' ? role === 'CLIENTE' : role === 'ASESOR' || role === 'SUPERVISOR' }
 
+function Feedback({ children, kind = 'error' }: { children: React.ReactNode; kind?: 'error' | 'success' | 'info' }) {
+  const classes = kind === 'error' ? 'border-[#efb5b2] bg-[#fff2f1] text-[#8b1e1e]' : kind === 'success' ? 'border-[#b9d991] bg-[#f3f9e9] text-[#3f6512]' : 'border-[#b8d4de] bg-[#eef6f8] text-ink-800'
+  return <div className={`rounded-[10px] border px-4 py-3 text-[13.5px] leading-relaxed ${classes}`} role={kind === 'error' ? 'alert' : 'status'}>{children}</div>
+}
+
 function PortalMismatch({ portal }: { portal: LoginPortal }) {
   return portal === 'client'
-    ? <div className="form-error" role="alert"><strong>Esta cuenta pertenece al acceso interno.</strong><span>Utiliza el portal reservado para asesores y supervisores.</span><Link to="/personal/login">Ir al acceso para personal</Link></div>
-    : <div className="form-error" role="alert"><strong>Debes utilizar el portal de clientes.</strong><span>Este acceso es exclusivo para personal autorizado del prototipo.</span><Link to="/login">Ir al acceso de clientes</Link></div>
+    ? <Feedback><strong className="block">Esta cuenta pertenece al acceso interno.</strong><span className="block">Utiliza el portal reservado para asesores y supervisores.</span><Link className="mt-1 inline-block font-semibold underline" to="/personal/login">Ir al acceso para personal</Link></Feedback>
+    : <Feedback><strong className="block">Debes utilizar el portal de clientes.</strong><span className="block">Este acceso es exclusivo para personal autorizado.</span><Link className="mt-1 inline-block font-semibold underline" to="/login">Ir al acceso de clientes</Link></Feedback>
 }
 
 function LoginForm({ portal }: { portal: LoginPortal }) {
@@ -41,42 +49,69 @@ function LoginForm({ portal }: { portal: LoginPortal }) {
   const isStaff = portal === 'staff'
   const emailId = isStaff ? 'staff-login-email' : 'client-login-email'
   const passwordId = isStaff ? 'staff-login-password' : 'client-login-password'
-  return <section className="auth-card card">
-    <div className="auth-kicker">{isStaff ? 'Portal interno' : 'Portal de clientes'}</div><h1>{isStaff ? 'Acceso para personal' : 'Bienvenido'}</h1>
-    <p>{isStaff ? 'Exclusivo para asesores y supervisores autorizados del prototipo.' : 'Ingresa para consultar y dar seguimiento a tus solicitudes demo.'}</p>
-    <div className="auth-safety-note"><strong>Entorno de demostración</strong><span>{ACADEMIC_DISCLAIMER}</span><span>No ingreses claves ni datos de banca real.</span></div>
-    {mismatchedPortal && <PortalMismatch portal={portal} />}{serverError && <div className="form-error" role="alert">{serverError}</div>}
-    <form onSubmit={handleSubmit(submit)} noValidate>
-      <label htmlFor={emailId}>Correo electrónico</label><input id={emailId} type="email" autoComplete="email" placeholder="cuenta.demo@ejemplo.com" aria-invalid={Boolean(errors.email)} {...field('email')} />{errors.email && <span className="field-error">{errors.email.message}</span>}
-      <label htmlFor={passwordId}>Contraseña</label><input id={passwordId} type="password" autoComplete="current-password" aria-invalid={Boolean(errors.password)} {...field('password')} />{errors.password && <span className="field-error">{errors.password.message}</span>}
-      <button className="button" type="submit" disabled={isSubmitting}>{isSubmitting ? 'Validando…' : isStaff ? 'Ingresar al portal interno' : 'Iniciar sesión'}</button>
-    </form>
-    <p className="helper">{isStaff ? <Link to="/">Volver al sitio público</Link> : <>¿Aún no tienes cuenta demo? <Link to="/registro">Registrarse</Link></>}</p>
-  </section>
+
+  return <AuthShell side={isStaff ? 'staff' : 'client'} title={isStaff ? 'Acceso para personal' : 'Bienvenido de vuelta'} subtitle={isStaff ? 'Ingresa con tu cuenta autorizada para continuar.' : 'Ingresa a tu portal para gestionar tus consultas y solicitudes.'}>
+    <div className="space-y-4">
+      {mismatchedPortal && <PortalMismatch portal={portal} />}
+      {serverError && <Feedback>{serverError}</Feedback>}
+      <form onSubmit={handleSubmit(submit)} className="space-y-4" noValidate>
+        <Field label="Correo electrónico" required error={errors.email?.message}><Input id={emailId} type="email" autoComplete="email" placeholder="correo@ejemplo.com" {...field('email')} /></Field>
+        <Field label="Contraseña" required error={errors.password?.message}><Input id={passwordId} type="password" autoComplete="current-password" placeholder="••••••••" {...field('password')} /></Field>
+        {!isStaff && <div className="flex justify-end"><Link to="/recuperar-contrasena" className="min-h-11 py-2 text-[13px] font-semibold text-turq-dark hover:underline">¿Olvidaste tu contraseña?</Link></div>}
+        <Button type="submit" full size="lg" loading={isSubmitting} icon={isStaff ? Icon.shield : Icon.lock}>{isSubmitting ? (isStaff ? 'Validando acceso…' : 'Validando…') : (isStaff ? 'Ingresar al portal interno' : 'Iniciar sesión')}</Button>
+      </form>
+      <div className="border-t border-[#eef2f3] pt-5 text-center text-[14px] text-muted">
+        {isStaff ? <Link className="inline-flex min-h-11 items-center gap-1.5 hover:text-ink" to="/"><Icon.arrowL size={14} /> Volver al sitio público</Link> : <p>¿Aún no tienes cuenta? <Link className="font-semibold text-turq-dark hover:underline" to="/register">Crear cuenta</Link></p>}
+      </div>
+    </div>
+  </AuthShell>
 }
 
 export function ClientLoginForm() { return <LoginForm portal="client" /> }
 export function StaffLoginForm() { return <LoginForm portal="staff" /> }
 
 export function RegisterForm() {
-  const navigate = useNavigate(); const [serverError, setServerError] = useState<string | null>(null); const [success, setSuccess] = useState(false)
+  const [serverError, setServerError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
   const { register: field, handleSubmit, formState: { errors, isSubmitting } } = useForm<RegisterRequest & { confirmPassword: string }>({ resolver: zodResolver(registerSchema) })
   const submit = async (data: RegisterRequest & { confirmPassword: string }) => {
     setServerError(null)
-    try { const payload: RegisterRequest = { full_name: data.full_name, email: data.email, phone: data.phone, password: data.password }; await register(payload); setSuccess(true); setTimeout(() => navigate('/login'), 700) }
-    catch (error: unknown) { setServerError(errorMessage(error, 'Ese correo ya está registrado.')) }
+    try {
+      const payload: RegisterRequest = { full_name: data.full_name, email: data.email, phone: data.phone || undefined, password: data.password }
+      await register(payload)
+      setSuccess(true)
+    } catch (error: unknown) { setServerError(errorMessage(error, 'Ese correo ya está registrado.')) }
   }
-  return <section className="auth-card card">
-    <div className="auth-kicker">Registro de clientes</div><h1>Crea tu cuenta demo</h1><p>Registra datos ficticios para explorar el prototipo académico.</p>
-    <div className="auth-safety-note"><strong>Antes de continuar</strong><span>{ACADEMIC_DISCLAIMER}</span><span>No uses información personal o bancaria real.</span></div>
-    {success && <div className="form-success" role="status">Cuenta creada. Redirigiendo al acceso de clientes…</div>}{serverError && <div className="form-error" role="alert">{serverError}</div>}
-    <form onSubmit={handleSubmit(submit)} noValidate>
-      <label htmlFor="register-name">Nombre completo</label><input id="register-name" autoComplete="name" placeholder="Nombre de demostración" aria-invalid={Boolean(errors.full_name)} {...field('full_name')} />{errors.full_name && <span className="field-error">{errors.full_name.message}</span>}
-      <label htmlFor="register-email">Correo electrónico</label><input id="register-email" type="email" autoComplete="email" placeholder="cuenta.demo@ejemplo.com" aria-invalid={Boolean(errors.email)} {...field('email')} />{errors.email && <span className="field-error">{errors.email.message}</span>}
-      <label htmlFor="register-phone">Teléfono <span className="optional">(opcional y ficticio)</span></label><input id="register-phone" type="tel" autoComplete="tel" placeholder="999 999 999" {...field('phone')} />
-      <label htmlFor="register-password">Contraseña</label><input id="register-password" type="password" autoComplete="new-password" aria-invalid={Boolean(errors.password)} {...field('password')} /><ul className="password-rules"><li>Mínimo 8 caracteres y máximo 128</li><li>Al menos una mayúscula, una minúscula y un número</li></ul>{errors.password && <span className="field-error">{errors.password.message}</span>}
-      <label htmlFor="confirm-password">Confirmar contraseña</label><input id="confirm-password" type="password" autoComplete="new-password" aria-invalid={Boolean(errors.confirmPassword)} {...field('confirmPassword')} />{errors.confirmPassword && <span className="field-error">{errors.confirmPassword.message}</span>}
-      <button className="button" type="submit" disabled={isSubmitting}>{isSubmitting ? 'Creando cuenta…' : 'Crear cuenta demo'}</button>
-    </form><p className="helper"><Link to="/login">Volver al acceso de clientes</Link></p>
-  </section>
+
+  return <AuthShell side="client" title={success ? '¡Cuenta creada!' : 'Crear cuenta'} subtitle={success ? 'Tu cuenta se registró correctamente.' : 'Regístrate para dar seguimiento a tus solicitudes.'}>
+    {success ? <div className="space-y-5">
+      <div className="grid place-items-center py-4"><span className="gnb-pop grid h-20 w-20 place-items-center rounded-full bg-[#e9f4d7] text-[#4c7a15]"><Icon.check size={40} /></span></div>
+      <Feedback kind="success">Cuenta creada. Ya puedes iniciar sesión y comenzar a gestionar tus consultas.</Feedback>
+      <Link className="inline-flex min-h-12 w-full items-center justify-center rounded-[10px] bg-turq-dark px-6 text-[15px] font-semibold text-white" to="/login">Ir al inicio de sesión</Link>
+    </div> : <>
+      <form onSubmit={handleSubmit(submit)} className="space-y-4" noValidate>
+        {serverError && <Feedback>{serverError}</Feedback>}
+        <Field label="Nombre completo" required error={errors.full_name?.message}><Input id="register-name" autoComplete="name" placeholder="Nombre completo" {...field('full_name')} /></Field>
+        <Field label="Correo electrónico" required error={errors.email?.message}><Input id="register-email" type="email" autoComplete="email" placeholder="correo@ejemplo.com" {...field('email')} /></Field>
+        <Field label="Teléfono" hint="Opcional" error={errors.phone?.message}><Input id="register-phone" type="tel" autoComplete="tel" {...field('phone')} /></Field>
+        <Field label="Contraseña" required error={errors.password?.message} hint={!errors.password ? 'Mínimo 8 caracteres, con mayúscula, minúscula y número.' : undefined}><Input id="register-password" type="password" autoComplete="new-password" placeholder="••••••••" {...field('password')} /></Field>
+        <Field label="Confirmar contraseña" required error={errors.confirmPassword?.message}><Input id="confirm-password" type="password" autoComplete="new-password" placeholder="••••••••" {...field('confirmPassword')} /></Field>
+        <Button type="submit" full size="lg" loading={isSubmitting} icon={Icon.check}>{isSubmitting ? 'Creando cuenta…' : 'Crear cuenta'}</Button>
+      </form>
+      <div className="mt-6 border-t border-[#eef2f3] pt-5 text-center text-[14px] text-muted">¿Ya tienes cuenta? <Link className="font-semibold text-turq-dark hover:underline" to="/login">Volver al login</Link></div>
+    </>}
+  </AuthShell>
+}
+
+export function RecoverPasswordForm() {
+  return <AuthShell side="client" title="Recuperar contraseña" subtitle="Esta opción estará disponible próximamente.">
+    <div className="space-y-4">
+      <Feedback kind="info"><strong>Funcionalidad no disponible</strong><span className="mt-1 block">No es posible solicitar un enlace de recuperación desde este portal.</span></Feedback>
+      <form className="space-y-4" aria-label="Recuperación de contraseña">
+        <Field label="Correo electrónico" hint="El envío se encuentra deshabilitado."><Input type="email" autoComplete="email" placeholder="correo@ejemplo.com" disabled /></Field>
+        <Button type="button" full size="lg" icon={Icon.send} disabled>Enviar enlace</Button>
+      </form>
+      <Link to="/login" className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 text-[13px] text-muted hover:text-ink"><Icon.arrowL size={14} /> Volver</Link>
+    </div>
+  </AuthShell>
 }

@@ -7,11 +7,12 @@ import {
 import {
   clearConversationId,
   getConversationId,
+  isConversationId,
   setConversationId,
 } from './chatbot-storage'
 
 const conversation = {
-  id: 'conversation-1',
+  id: '11111111-1111-4111-8111-111111111111',
   user_id: null,
   status: 'ACTIVE',
   started_at: '2026-09-12T20:00:00Z',
@@ -53,23 +54,23 @@ describe('API del chatbot', () => {
       new Response(JSON.stringify(response), { status: 200, headers: { 'Content-Type': 'application/json' } }),
     )
 
-    await expect(sendConversationMessage('conversation-1', 'Consulta')).resolves.toEqual(response)
+    await expect(sendConversationMessage('11111111-1111-4111-8111-111111111111', 'Consulta')).resolves.toEqual(response)
 
     const [url, init] = fetchMock.mock.calls[0]
-    expect(url).toContain('/chat/conversations/conversation-1/messages')
+    expect(url).toContain('/chat/conversations/11111111-1111-4111-8111-111111111111/messages')
     expect(init).toEqual(expect.objectContaining({ method: 'POST', body: JSON.stringify({ content: 'Consulta' }) }))
   })
 
   it('devuelve el contrato definido de link-user', async () => {
-    const linked = { id: 'conversation-1', user_id: 'client-1', status: 'ACTIVE' }
+    const linked = { id: '11111111-1111-4111-8111-111111111111', user_id: 'client-1', status: 'ACTIVE' }
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(JSON.stringify(linked), { status: 200, headers: { 'Content-Type': 'application/json' } }),
     )
 
-    await expect(linkConversationToUser('conversation-1')).resolves.toEqual(linked)
+    await expect(linkConversationToUser('11111111-1111-4111-8111-111111111111')).resolves.toEqual(linked)
 
     const [url, init] = fetchMock.mock.calls[0]
-    expect(url).toContain('/chat/conversations/conversation-1/link-user')
+    expect(url).toContain('/chat/conversations/11111111-1111-4111-8111-111111111111/link-user')
     expect(init).toEqual(expect.objectContaining({ method: 'POST' }))
     expect(init?.body).toBeUndefined()
   })
@@ -82,13 +83,24 @@ describe('persistencia del chatbot', () => {
   })
 
   it('guarda y limpia únicamente conversation_id en sessionStorage', () => {
-    setConversationId('conversation-1')
-    expect(getConversationId()).toBe('conversation-1')
-    expect(sessionStorage.getItem('chat_conversation_id')).toBe('conversation-1')
+    setConversationId('11111111-1111-4111-8111-111111111111')
+    expect(getConversationId()).toBe('11111111-1111-4111-8111-111111111111')
+    expect(sessionStorage.getItem('chat_conversation_id')).toBe('11111111-1111-4111-8111-111111111111')
     expect(localStorage.length).toBe(0)
 
     clearConversationId()
     expect(getConversationId()).toBeNull()
     expect(localStorage.length).toBe(0)
   })
+
+  it('acepta únicamente UUIDs de conversación y elimina valores inválidos', () => {
+    expect(isConversationId('11111111-1111-4111-8111-111111111111')).toBe(true)
+    expect(isConversationId('11111111-1111-0111-8111-111111111111')).toBe(false)
+    expect(isConversationId('../not-a-uuid')).toBe(false)
+    expect(isConversationId(null)).toBe(false)
+
+    setConversationId('../not-a-uuid')
+    expect(sessionStorage.getItem('chat_conversation_id')).toBeNull()
+  })
+
 })
