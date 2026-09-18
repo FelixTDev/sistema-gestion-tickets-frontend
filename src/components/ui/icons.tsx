@@ -64,4 +64,5 @@ export const Icon = {
   calendar: icon(<><rect x="3" y="4" width="18" height="17" rx="2" /><path d="M3 9h18M8 2v4M16 2v4" /></>),
   refresh: icon(<path d="M21 12a9 9 0 1 1-3-6.7M21 4v4h-4" />),
   compass: icon(<><circle cx="12" cy="12" r="9" /><path d="m15 9-2 5-4 1 2-5z" /></>),
+  target: icon(<><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="5" /><circle cx="12" cy="12" r="1" fill="currentColor" /></>),
 } as const

@@ -35,8 +35,19 @@ interface ChatbotContextValue {
 
 const ChatbotContext = createContext<ChatbotContextValue | null>(null)
 
-function isInternalPath(pathname: string): boolean {
-  return pathname === '/design-system' || pathname === '/personal' || pathname.startsWith('/personal/') || pathname === '/panel' || pathname.startsWith('/panel/')
+function isNonChatbotPath(pathname: string): boolean {
+  return (
+    pathname === '/login' ||
+    pathname === '/register' ||
+    pathname === '/registro' ||
+    pathname === '/recuperar-contrasena' ||
+    pathname === '/personal/login' ||
+    pathname === '/design-system' ||
+    pathname === '/personal' ||
+    pathname.startsWith('/personal/') ||
+    pathname === '/panel' ||
+    pathname.startsWith('/panel/')
+  )
 }
 
 function isUnavailableError(error: unknown): boolean {
@@ -58,7 +69,7 @@ export function ChatbotProvider({ children }: { children: ReactNode }) {
   const [linkRetryNonce, setLinkRetryNonce] = useState(0)
   const linkAttempts = useRef(new Set<string>())
   const isStaff = user?.role === 'ASESOR' || user?.role === 'SUPERVISOR'
-  const canUseChatbot = !isAuthLoading && !isStaff && !isInternalPath(pathname)
+  const canUseChatbot = !isAuthLoading && !isStaff && !isNonChatbotPath(pathname)
   const requiresLink = user?.role === 'CLIENTE' && conversationId !== null && readyClientConversationId !== conversationId
   const conversationQuery = useConversationQuery(conversationId, canUseChatbot && !requiresLink && !isLinking)
   const createMutation = useCreateConversationMutation()

@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
@@ -39,7 +39,7 @@ describe('página pública de preguntas frecuentes', () => {
     mockFaqRequests()
     renderFaqPage()
 
-    expect(screen.getByRole('heading', { level: 1, name: 'Preguntas frecuentes' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: /preguntas frecuentes/i })).toBeInTheDocument()
   })
 
   it('carga las FAQ activas y filtra por categoría activa', async () => {
@@ -49,10 +49,12 @@ describe('página pública de preguntas frecuentes', () => {
     expect(await screen.findByText('¿Cómo consulto mi cuenta?')).toBeInTheDocument()
     expect(screen.getByText('¿Cómo bloqueo una tarjeta?')).toBeInTheDocument()
     expect(screen.queryByText('FAQ inactiva')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Oculta' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /oculta/i })).not.toBeInTheDocument()
     expect(screen.getByText('Cuentas', { selector: '[data-faq-category]' })).toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { name: 'Cuentas' }))
+    const categoryGrid = screen.getByLabelText('Filtrar por categoría')
+    await userEvent.click(within(categoryGrid).getByRole('button', { name: /cuentas/i }))
+
     expect(screen.getByText('¿Cómo consulto mi cuenta?')).toBeInTheDocument()
     expect(screen.queryByText('¿Cómo bloqueo una tarjeta?')).not.toBeInTheDocument()
   })
@@ -62,8 +64,8 @@ describe('página pública de preguntas frecuentes', () => {
     renderFaqPage()
     await screen.findByText('¿Cómo consulto mi cuenta?')
 
-    expect(screen.getByRole('searchbox', { name: /buscar preguntas/i })).toHaveAttribute('placeholder', 'Busca una pregunta o palabra clave…')
-    expect(screen.getByRole('link', { name: /habla con nuestro asistente/i })).toHaveAttribute('href', '/chat')
+    expect(screen.getByRole('searchbox', { name: /buscar/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /iniciar conversación/i })).toHaveAttribute('href', '/chat')
   })
 
   it('busca localmente por pregunta o palabras clave y combina el filtro', async () => {
@@ -71,12 +73,13 @@ describe('página pública de preguntas frecuentes', () => {
     renderFaqPage()
     await screen.findByText('¿Cómo consulto mi cuenta?')
 
-    await userEvent.type(screen.getByRole('searchbox', { name: /buscar preguntas/i }), 'seguridad')
+    await userEvent.type(screen.getByRole('searchbox', { name: /buscar/i }), 'seguridad')
     expect(screen.getByText('¿Cómo bloqueo una tarjeta?')).toBeInTheDocument()
     expect(screen.queryByText('¿Cómo consulto mi cuenta?')).not.toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { name: 'Cuentas' }))
-    expect(screen.getByText(/no encontramos preguntas/i)).toBeInTheDocument()
+    const categoryGrid = screen.getByLabelText('Filtrar por categoría')
+    await userEvent.click(within(categoryGrid).getByRole('button', { name: /cuentas/i }))
+    expect(screen.getByText(/sin resultados/i)).toBeInTheDocument()
   })
 
   it('muestra estado de carga', () => {

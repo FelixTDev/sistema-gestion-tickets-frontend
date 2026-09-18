@@ -5,6 +5,7 @@ import { EmptyState, ErrorState } from '../components/ui/states'
 import { Skeleton } from '../components/ui/skeleton'
 import { ClientLoginForm, RecoverPasswordForm, RegisterForm, StaffLoginForm } from '../features/auth/auth-forms'
 import { useCategories, useFaqs } from '../features/faqs/hooks/use-faqs'
+import { formatCategoryLabel } from '../lib/formatters'
 
 const actionLink = 'inline-flex min-h-12 items-center justify-center gap-2 rounded-[10px] bg-turq-dark px-6 text-[15px] font-semibold text-white shadow-sm transition-colors hover:bg-[#055b62]'
 const secondaryActionLink = 'inline-flex min-h-12 items-center justify-center rounded-[10px] border border-[#cdd9de] bg-white px-6 text-[15px] font-semibold text-ink-800 transition-colors hover:border-turq-dark hover:text-turq-dark'
@@ -34,7 +35,7 @@ function LandingKnowledge() {
       {!categoriesQuery.isLoading && !categoriesQuery.isError && categories.length === 0 && <Card><EmptyState icon={Icon.tag} title="Aún no hay categorías disponibles" desc="Cuando se publiquen temas de consulta, aparecerán aquí." /></Card>}
       {!categoriesQuery.isLoading && !categoriesQuery.isError && categories.length > 0 && <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {categories.map((category) => <Link key={category.id} to="/faq" className="flex min-h-[68px] items-center justify-between gap-3 rounded-[12px] border border-[#e6edef] bg-white px-4 py-3.5 text-left transition-all hover:border-turq-dark hover:shadow-sm">
-          <span className="flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-[9px] bg-[#eef4f5] text-turq-dark"><Icon.tag size={17} /></span><span className="text-[14px] font-semibold text-ink">{category.name}</span></span>
+          <span className="flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-[9px] bg-[#eef4f5] text-turq-dark"><Icon.tag size={17} /></span><span className="text-[14px] font-semibold text-ink">{formatCategoryLabel(category.name)}</span></span>
           <Icon.chevronR size={17} className="shrink-0 text-[#798c96]" />
         </Link>)}
       </div>}

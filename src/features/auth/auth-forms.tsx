@@ -60,8 +60,26 @@ function LoginForm({ portal }: { portal: LoginPortal }) {
         {!isStaff && <div className="flex justify-end"><Link to="/recuperar-contrasena" className="min-h-11 py-2 text-[13px] font-semibold text-turq-dark hover:underline">¿Olvidaste tu contraseña?</Link></div>}
         <Button type="submit" full size="lg" loading={isSubmitting} icon={isStaff ? Icon.shield : Icon.lock}>{isSubmitting ? (isStaff ? 'Validando acceso…' : 'Validando…') : (isStaff ? 'Ingresar al portal interno' : 'Iniciar sesión')}</Button>
       </form>
-      <div className="border-t border-[#eef2f3] pt-5 text-center text-[14px] text-muted">
-        {isStaff ? <Link className="inline-flex min-h-11 items-center gap-1.5 hover:text-ink" to="/"><Icon.arrowL size={14} /> Volver al sitio público</Link> : <p>¿Aún no tienes cuenta? <Link className="font-semibold text-turq-dark hover:underline" to="/register">Crear cuenta</Link></p>}
+      <div className="border-t border-[#eef2f3] pt-5 text-center text-[14px] text-muted space-y-3">
+        {isStaff ? (
+          <Link className="inline-flex min-h-11 items-center gap-1.5 hover:text-ink transition-colors" to="/">
+            <Icon.arrowL size={14} /> Volver al sitio público
+          </Link>
+        ) : (
+          <>
+            <p>
+              ¿Aún no tienes cuenta?{' '}
+              <Link className="font-semibold text-turq-dark hover:underline" to="/register">
+                Crear cuenta
+              </Link>
+            </p>
+            <div>
+              <Link className="inline-flex min-h-11 items-center gap-1.5 text-[13.5px] text-muted hover:text-ink transition-colors" to="/">
+                <Icon.arrowL size={14} /> Volver al sitio público
+              </Link>
+            </div>
+          </>
+        )}
       </div>
     </div>
   </AuthShell>
@@ -89,16 +107,46 @@ export function RegisterForm() {
       <Feedback kind="success">Cuenta creada. Ya puedes iniciar sesión y comenzar a gestionar tus consultas.</Feedback>
       <Link className="inline-flex min-h-12 w-full items-center justify-center rounded-[10px] bg-turq-dark px-6 text-[15px] font-semibold text-white" to="/login">Ir al inicio de sesión</Link>
     </div> : <>
-      <form onSubmit={handleSubmit(submit)} className="space-y-4" noValidate>
+      <form onSubmit={handleSubmit(submit)} className="space-y-3" noValidate>
         {serverError && <Feedback>{serverError}</Feedback>}
-        <Field label="Nombre completo" required error={errors.full_name?.message}><Input id="register-name" autoComplete="name" placeholder="Nombre completo" {...field('full_name')} /></Field>
-        <Field label="Correo electrónico" required error={errors.email?.message}><Input id="register-email" type="email" autoComplete="email" placeholder="correo@ejemplo.com" {...field('email')} /></Field>
-        <Field label="Teléfono" hint="Opcional" error={errors.phone?.message}><Input id="register-phone" type="tel" autoComplete="tel" {...field('phone')} /></Field>
-        <Field label="Contraseña" required error={errors.password?.message} hint={!errors.password ? 'Mínimo 8 caracteres, con mayúscula, minúscula y número.' : undefined}><Input id="register-password" type="password" autoComplete="new-password" placeholder="••••••••" {...field('password')} /></Field>
-        <Field label="Confirmar contraseña" required error={errors.confirmPassword?.message}><Input id="confirm-password" type="password" autoComplete="new-password" placeholder="••••••••" {...field('confirmPassword')} /></Field>
-        <Button type="submit" full size="lg" loading={isSubmitting} icon={Icon.check}>{isSubmitting ? 'Creando cuenta…' : 'Crear cuenta'}</Button>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Nombre completo" required error={errors.full_name?.message}>
+            <Input id="register-name" autoComplete="name" placeholder="Nombre completo" {...field('full_name')} />
+          </Field>
+          <Field label="Teléfono" hint="Opcional" error={errors.phone?.message}>
+            <Input id="register-phone" type="tel" autoComplete="tel" placeholder="987654321" {...field('phone')} />
+          </Field>
+        </div>
+        <Field label="Correo electrónico" required error={errors.email?.message}>
+          <Input id="register-email" type="email" autoComplete="email" placeholder="correo@ejemplo.com" {...field('email')} />
+        </Field>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field
+            label="Contraseña"
+            required
+            tooltip="Mínimo 8 caracteres, con mayúscula, minúscula y número."
+            error={errors.password?.message}
+          >
+            <Input id="register-password" type="password" autoComplete="new-password" placeholder="••••••••" {...field('password')} />
+          </Field>
+          <Field label="Confirmar contraseña" required error={errors.confirmPassword?.message}>
+            <Input id="confirm-password" type="password" autoComplete="new-password" placeholder="••••••••" {...field('confirmPassword')} />
+          </Field>
+        </div>
+        <div className="pt-1">
+          <Button type="submit" full size="lg" loading={isSubmitting} icon={Icon.check}>
+            {isSubmitting ? 'Creando cuenta…' : 'Crear cuenta'}
+          </Button>
+        </div>
       </form>
-      <div className="mt-6 border-t border-[#eef2f3] pt-5 text-center text-[14px] text-muted">¿Ya tienes cuenta? <Link className="font-semibold text-turq-dark hover:underline" to="/login">Volver al login</Link></div>
+      <div className="mt-6 border-t border-[#eef2f3] pt-5 text-center text-[14px] text-muted space-y-3">
+        <p>¿Ya tienes cuenta? <Link className="font-semibold text-turq-dark hover:underline" to="/login">Volver al login</Link></p>
+        <div>
+          <Link className="inline-flex min-h-11 items-center gap-1.5 text-[13.5px] text-muted hover:text-ink transition-colors" to="/">
+            <Icon.arrowL size={14} /> Volver al sitio público
+          </Link>
+        </div>
+      </div>
     </>}
   </AuthShell>
 }
@@ -111,7 +159,14 @@ export function RecoverPasswordForm() {
         <Field label="Correo electrónico" hint="El envío se encuentra deshabilitado."><Input type="email" autoComplete="email" placeholder="correo@ejemplo.com" disabled /></Field>
         <Button type="button" full size="lg" icon={Icon.send} disabled>Enviar enlace</Button>
       </form>
-      <Link to="/login" className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 text-[13px] text-muted hover:text-ink"><Icon.arrowL size={14} /> Volver</Link>
+      <div className="pt-2 text-center text-[14px] text-muted space-y-3">
+        <Link to="/login" className="inline-flex min-h-11 items-center justify-center gap-1.5 text-[13.5px] text-muted hover:text-ink"><Icon.arrowL size={14} /> Volver al inicio de sesión</Link>
+        <div>
+          <Link className="inline-flex min-h-11 items-center gap-1.5 text-[13.5px] text-muted hover:text-ink transition-colors" to="/">
+            <Icon.arrowL size={14} /> Volver al sitio público
+          </Link>
+        </div>
+      </div>
     </div>
   </AuthShell>
 }

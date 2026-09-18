@@ -248,6 +248,19 @@ describe('coordinación por rol', () => {
     expect(calls).toEqual(['me'])
   })
 
+  it.each(['/login', '/register', '/registro', '/recuperar-contrasena', '/personal/login'])(
+    'permanece totalmente inactivo y sin peticiones de red ni widget en %s',
+    async (route) => {
+      sessionStorage.setItem('chat_conversation_id', '11111111-1111-4111-8111-111111111111')
+      const fetchMock = vi.spyOn(globalThis, 'fetch')
+      renderHarness(<ChatbotWidget />, route)
+
+      await new Promise((resolve) => setTimeout(resolve, 25))
+      expect(fetchMock).not.toHaveBeenCalled()
+      expect(screen.queryByRole('button', { name: /abrir asistente de atención/i })).not.toBeInTheDocument()
+    },
+  )
+
   it('no restaura el chatbot en /personal/login aunque aún no exista sesión', async () => {
     sessionStorage.setItem('chat_conversation_id', '11111111-1111-4111-8111-111111111111')
     const fetchMock = vi.spyOn(globalThis, 'fetch')

@@ -19,12 +19,13 @@ type FieldControlProps = {
 export type FieldProps = {
   label: string
   hint?: string
+  tooltip?: string
   error?: string
   required?: boolean
   children: ReactElement<FieldControlProps>
 }
 
-export function Field({ label, hint, error, required = false, children }: FieldProps) {
+export function Field({ label, hint, tooltip, error, required = false, children }: FieldProps) {
   const reactId = useId().replaceAll(':', '')
   const controlId = children.props.id ?? `field-${reactId}`
   const descriptionId = error ? `${controlId}-error` : hint ? `${controlId}-hint` : undefined
@@ -40,26 +41,42 @@ export function Field({ label, hint, error, required = false, children }: FieldP
 
   return (
     <div className="block">
-      <label className="mb-1.5 block text-[13px] font-semibold text-ink" htmlFor={controlId}>
-        {label}{' '}
-        {required ? (
-          <span className="text-danger" aria-hidden="true">
-            *
-          </span>
-        ) : null}
-      </label>
+      <div className="mb-1 flex items-center justify-between text-[13px] font-semibold text-ink">
+        <div className="flex items-center gap-1.5">
+          <label htmlFor={controlId}>
+            {label}{' '}
+            {required ? (
+              <span className="text-danger" aria-hidden="true">
+                *
+              </span>
+            ) : null}
+          </label>
+          {tooltip ? (
+            <span className="group relative inline-flex items-center">
+              <span
+                tabIndex={0}
+                aria-label={tooltip}
+                title={tooltip}
+                className="grid h-4 w-4 place-items-center rounded-full bg-[#e6edef] text-[11px] font-extrabold text-[#526875] transition-colors hover:bg-turq hover:text-white"
+              >
+                i
+              </span>
+              <span className="pointer-events-none absolute bottom-full left-1/2 mb-1.5 hidden -translate-x-1/2 whitespace-nowrap rounded-md bg-[#06243a] px-2.5 py-1 text-[11.5px] font-medium text-white shadow-lg group-hover:block group-focus-within:block z-30">
+                {tooltip}
+              </span>
+            </span>
+          ) : null}
+        </div>
+        {hint ? <span className="text-[11.5px] font-normal text-muted">{hint}</span> : null}
+      </div>
       {control}
       {error ? (
         <p
           id={descriptionId}
-          className="mt-1.5 flex items-center gap-1 text-[12px] font-medium text-danger"
+          className="mt-1 flex items-center gap-1 text-[12px] font-medium text-danger"
         >
           <Icon.alert size={13} />
           {error}
-        </p>
-      ) : hint ? (
-        <p id={descriptionId} className="mt-1.5 text-[12px] text-muted">
-          {hint}
         </p>
       ) : null}
     </div>

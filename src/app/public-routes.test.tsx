@@ -62,6 +62,13 @@ describe('rutas y composición del sitio público', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Crear cuenta' })).toBeInTheDocument()
   })
 
+  it('muestra la página institucional con misión, visión y objetivos en /nosotros', () => {
+    renderPath('/nosotros')
+    expect(screen.getByRole('heading', { level: 1, name: /sobre nosotros/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: /misión y visión/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: /objetivos estratégicos/i })).toBeInTheDocument()
+  })
+
   it('presenta la recuperación como una función no disponible y no permite enviarla', () => {
     renderPath('/recuperar-contrasena')
     expect(screen.getByRole('heading', { level: 1, name: 'Recuperar contraseña' })).toBeInTheDocument()
@@ -71,7 +78,7 @@ describe('rutas y composición del sitio público', () => {
 
   it('usa el aviso aprobado y navegación real con menú móvil accesible', async () => {
     renderPath('/')
-    expect(screen.getByText('Portal de consultas y tickets. Las operaciones bancarias se realizan únicamente por los canales oficiales del banco.')).toBeInTheDocument()
+    expect(screen.getAllByText('Portal de consultas y tickets. Las operaciones bancarias se realizan únicamente por los canales oficiales del banco.')[0]).toBeInTheDocument()
     const toggle = screen.getByRole('button', { name: /abrir menú/i })
     expect(toggle).toHaveAttribute('aria-expanded', 'false')
     await userEvent.click(toggle)

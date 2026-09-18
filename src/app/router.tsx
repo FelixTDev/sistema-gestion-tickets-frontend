@@ -19,6 +19,7 @@ import { StaffTicketsPage } from '../features/tickets/pages/staff-tickets-page'
 import { AdvisorDashboardPage } from '../features/tickets/pages/advisor-dashboard-page'
 import { SupervisorDashboardPage } from '../features/reports/pages/supervisor-dashboard-page'
 import { hasRole } from '../lib/auth'
+import { AboutPage } from '../pages/about-page'
 import {
   HomePage,
   LoginPage,
@@ -71,6 +72,7 @@ export function AppRouter({ onCreateTicket }: { onCreateTicket?: () => void }) {
       <Route path="/" element={<HomePage />} />
       <Route path="/faq" element={<FaqPage />} />
       <Route path="/preguntas-frecuentes" element={<FaqPage />} />
+      <Route path="/nosotros" element={<AboutPage />} />
     </Route>
     <Route path="/chat" element={<ChatRoute onCreateTicket={onCreateTicket} />} />
     <Route path="/login" element={<LoginPage />} />
