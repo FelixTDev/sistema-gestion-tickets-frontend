@@ -28,13 +28,23 @@ const categoryId = '22222222-2222-4222-8222-222222222222'
 const faqResponse: FAQRead = {
   id: faqId,
   category_id: categoryId,
+  title: 'Pregunta devuelta',
   question: 'Pregunta devuelta',
   answer: 'Respuesta devuelta',
+  summary: 'Resumen devuelto',
   keywords: 'consulta',
+  tags: ['consulta'],
+  synonyms: [],
+  intent: null,
+  status: 'PUBLISHED',
+  priority: 0,
+  display_order: 0,
+  version: 1,
   is_active: true,
   created_by: 'user-response',
   created_at: '2026-09-14T00:00:00Z',
   updated_at: '2026-09-14T00:00:00Z',
+  published_at: '2026-09-14T00:00:00Z',
 }
 
 const categoryResponse: CategoryRead = {

@@ -12,6 +12,8 @@ const clientNavigation: ReadonlyArray<{ href: string; label: string; icon: IconC
   { href: '/cliente/tickets', label: 'Mis tickets', icon: Icon.ticket },
   { href: '/cliente/tickets/nuevo', label: 'Crear ticket', icon: Icon.plus },
   { href: '/chat', label: 'Asistente', icon: Icon.bot },
+  { href: '/cliente/notificaciones', label: 'Notificaciones', icon: Icon.bell },
+  { href: '/cliente/perfil', label: 'Perfil', icon: Icon.edit },
 ]
 
 function ClientNavigation({ onNavigate }: { onNavigate?: () => void }) {
@@ -26,7 +28,7 @@ function ClientNavigation({ onNavigate }: { onNavigate?: () => void }) {
 
 function ClientBottomNavigation() {
   return <nav aria-label="Navegación inferior del cliente" className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-[#dce6e9] bg-white/95 px-1 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_rgba(6,36,58,0.08)] backdrop-blur lg:hidden">
-    {clientNavigation.map(({ href, label, icon: NavIcon }) => <NavLink key={href} to={href} end className={({ isActive }) => `flex min-h-[68px] min-w-11 flex-col items-center justify-center gap-1 px-1 py-2 text-center text-[10px] font-bold leading-tight transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-turq ${isActive ? 'text-turq' : 'text-muted'}`}><NavIcon size={21} /><span>{label}</span></NavLink>)}
+    {clientNavigation.slice(0, 4).map(({ href, label, icon: NavIcon }) => <NavLink key={href} to={href} end className={({ isActive }) => `flex min-h-[68px] min-w-11 flex-col items-center justify-center gap-1 px-1 py-2 text-center text-[10px] font-bold leading-tight transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-turq ${isActive ? 'text-turq' : 'text-muted'}`}><NavIcon size={21} /><span>{label}</span></NavLink>)}
   </nav>
 }
 

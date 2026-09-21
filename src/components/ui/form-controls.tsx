@@ -84,7 +84,7 @@ export function Field({ label, hint, tooltip, error, required = false, children 
 }
 
 function inputClasses(error: boolean, className: string) {
-  return `h-11 w-full rounded-[10px] border bg-white px-3.5 text-[14px] text-ink outline-none transition-colors placeholder:text-[#9aa8b0] ${
+  return `h-11 w-full rounded-[10px] border bg-white px-3.5 text-[14px] text-ink outline-none transition-[border-color,box-shadow] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-turq placeholder:text-[#9aa8b0] ${
     error ? 'border-danger' : 'border-[#cdd9de] hover:border-[#a9bcc4] focus:border-turq'
   } ${className}`
 }

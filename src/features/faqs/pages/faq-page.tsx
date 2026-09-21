@@ -6,26 +6,27 @@ import { EmptyState, ErrorState } from '../../../components/ui/states'
 import { Skeleton } from '../../../components/ui/skeleton'
 import { formatCategoryLabel, getCategoryIcon } from '../../../lib/formatters'
 import { FaqAccordion } from '../components/faq-accordion'
-import { filterFaqs, useCategories, useFaqs } from '../hooks/use-faqs'
+import { useCategories, useFaqs } from '../hooks/use-faqs'
+import { FaqPagination } from '../components/faq-pagination'
 
 export function FaqPage() {
-  const faqsQuery = useFaqs()
-  const categoriesQuery = useCategories()
   const [categoryId, setCategoryId] = useState('')
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const faqsQuery = useFaqs({
+    search: search || undefined,
+    category_id: categoryId || undefined,
+    page: page > 1 ? page : undefined,
+    page_size: page > 1 ? 10 : undefined,
+  })
+  const categoriesQuery = useCategories()
 
   const activeCategories = useMemo(
     () => (categoriesQuery.data ?? []).filter((category) => category.is_active),
     [categoriesQuery.data],
   )
-  const activeFaqs = useMemo(
-    () => (faqsQuery.data ?? []).filter((faq) => faq.is_active),
-    [faqsQuery.data],
-  )
-  const visibleFaqs = useMemo(
-    () => filterFaqs({ faqs: activeFaqs, categoryId, search }),
-    [activeFaqs, categoryId, search],
-  )
+  const activeFaqs = useMemo(() => (faqsQuery.data?.items ?? []).filter((faq) => faq.is_active), [faqsQuery.data])
+  const visibleFaqs = activeFaqs
   const categoryNames = useMemo(
     () => Object.fromEntries(activeCategories.map((category) => [category.id, category.name])),
     [activeCategories],
@@ -52,7 +53,7 @@ export function FaqPage() {
             <Icon.book size={14} className="text-green" /> Base de Conocimiento GNB Perú
           </span>
           <h1 className="text-[34px] font-extrabold tracking-tight text-white sm:text-[44px]">
-            Preguntas Frecuentes
+            Preguntas frecuentes
           </h1>
           <p className="mx-auto mt-3 max-w-xl text-[16px] leading-relaxed text-[#c6d7de]">
             Encuentra información verificada y orientaciones claras sobre nuestros canales y servicios.
@@ -72,7 +73,7 @@ export function FaqPage() {
                 id="faq-search"
                 type="search"
                 value={search}
-                onChange={(event) => setSearch(event.target.value)}
+                onChange={(event) => { setSearch(event.target.value); setPage(1) }}
                 placeholder="Busca un tema o palabra clave (ej. saldo, tarjeta)..."
                 className="h-[56px] w-full rounded-[14px] border border-[#d2e0e4] bg-white py-3.5 pl-11 pr-11 text-[15px] font-medium text-ink outline-none transition-colors placeholder:text-[#798c96] focus:border-turq-dark focus:ring-2 focus:ring-turq/30"
               />
@@ -93,7 +94,7 @@ export function FaqPage() {
                 <span className="inline-flex items-center gap-1.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-green" />
                   Mostrando <strong className="text-white">{visibleFaqs.length}</strong> de{' '}
-                  <strong className="text-white">{activeFaqs.length}</strong> temas publicados
+                  <strong className="text-white">{faqsQuery.data?.total ?? 0}</strong> temas publicados
                 </span>
                 {search && (
                   <button
@@ -143,7 +144,7 @@ export function FaqPage() {
                 {categoryId && (
                   <button
                     type="button"
-                    onClick={() => setCategoryId('')}
+                    onClick={() => { setCategoryId(''); setPage(1) }}
                     className="text-[13px] font-bold text-turq-dark hover:underline"
                   >
                     Ver todas las categorías
@@ -157,7 +158,7 @@ export function FaqPage() {
                   type="button"
                   aria-pressed={categoryId === ''}
                   onClick={() => setCategoryId('')}
-                  className={`gnb-fade flex items-center gap-3.5 rounded-[14px] border p-4 text-left transition-all duration-200 ${
+                  className={`gnb-fade flex items-center gap-3.5 rounded-[14px] border p-4 text-left transition-[background-color,border-color,box-shadow,transform] duration-200 ${
                     categoryId === ''
                       ? 'border-[#0b4963] bg-[#06243a] text-white shadow-md'
                       : 'border-[#e6edef] bg-white text-ink hover:border-turq-dark hover:shadow-xs'
@@ -173,7 +174,7 @@ export function FaqPage() {
                   <div>
                     <p className="text-[14.5px] font-bold">Todas las categorías</p>
                     <p className={`text-[12px] ${categoryId === '' ? 'text-[#a2c4d3]' : 'text-muted'}`}>
-                      {activeFaqs.length} temas
+                      {faqsQuery.data?.total ?? 0} temas
                     </p>
                   </div>
                 </button>
@@ -189,8 +190,8 @@ export function FaqPage() {
                       key={category.id}
                       type="button"
                       aria-pressed={isSelected}
-                      onClick={() => setCategoryId(category.id)}
-                      className={`gnb-fade flex items-center gap-3.5 rounded-[14px] border p-4 text-left transition-all duration-200 ${
+                      onClick={() => { setCategoryId(category.id); setPage(1) }}
+                      className={`gnb-fade flex items-center gap-3.5 rounded-[14px] border p-4 text-left transition-[background-color,border-color,box-shadow,transform] duration-200 ${
                         isSelected
                           ? 'border-[#0b4963] bg-[#06243a] text-white shadow-md'
                           : 'border-[#e6edef] bg-white text-ink hover:border-turq-dark hover:shadow-xs'
@@ -253,6 +254,7 @@ export function FaqPage() {
                           onClick={() => {
                             setSearch('')
                             setCategoryId('')
+                            setPage(1)
                           }}
                           className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[10px] border border-[#cdd9de] bg-white px-5 text-[14px] font-semibold text-ink hover:border-turq-dark"
                         >
@@ -271,6 +273,7 @@ export function FaqPage() {
               ) : (
                 <FaqAccordion faqs={visibleFaqs} categoryNames={categoryNames} />
               )}
+              <FaqPagination page={faqsQuery.data?.page ?? page} totalPages={faqsQuery.data?.total_pages ?? 0} onPageChange={setPage} />
             </div>
 
             {/* Banner de Escalamiento Dual */}

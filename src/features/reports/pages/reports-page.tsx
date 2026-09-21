@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { Button } from '../../../components/ui/button'
 import { Card } from '../../../components/ui/card'
 import { PageHeader } from '../../../components/layout/page-header'
 import { useCategories } from '../../faqs/hooks/use-faqs'
 import { ReportDistribution } from '../components/report-distribution'
+import { ReportExport } from '../components/report-export'
 import { ReportFiltersForm, emptyReportFilters } from '../components/report-filters'
 import { ReportState } from '../components/report-state'
 import { useCategoryReport, usePriorityReport, useReportSummary, useResolutionTimeReport, useStatusReport } from '../hooks/use-reports'
@@ -20,8 +20,7 @@ export function ReportsPage() {
   const retryAll = () => { void summary.refetch(); void status.refetch(); void category.refetch(); void priority.refetch(); void resolution.refetch(); void categories.refetch() }
   const reportLoading = summary.isLoading || status.isLoading || category.isLoading || priority.isLoading || resolution.isLoading
   return <section className="reports-page">
-    <PageHeader eyebrow="Supervisión" title="Reportes" subtitle="Resumen ejecutivo del desempeño de atención." action={<Button variant="secondary" disabled title="Funcionalidad no disponible">Exportar</Button>} />
-    <p className="reports-unavailable" role="note">Exportar: Funcionalidad no disponible.</p>
+    <PageHeader eyebrow="Supervisión" title="Reportes" subtitle="Resumen ejecutivo del desempeño de atención." action={<ReportExport filters={filters} />} />
     <ReportFiltersForm categories={categories.data ?? []} onApply={setFilters} />
     <ReportState isLoading={reportLoading} isError={summary.isError} onRetry={retryAll}>
       {summary.data ? <div className="report-summary-grid">{summaryCards.map(([key, label]) => <Card className="report-summary-card" key={key}><span>{label}</span><strong>{summary.data[key]}</strong></Card>)}<Card className="report-summary-card"><span>Tiempo promedio de resolución</span><strong>{summary.data.average_resolution_time_hours} h</strong></Card></div> : <Card><p className="state">No hay resumen para los filtros seleccionados.</p></Card>}

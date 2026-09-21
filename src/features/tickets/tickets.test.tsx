@@ -92,7 +92,7 @@ describe('bandeja de tickets del cliente', () => {
     expect(screen.getByLabelText('Prioridad: Alta')).toBeInTheDocument()
     expect(screen.getByText('Origen: Chatbot')).toBeInTheDocument()
     expect(screen.getByText('Categoría no disponible')).toBeInTheDocument()
-    expect(screen.getByText('Cuentas')).toBeInTheDocument()
+    expect(screen.getAllByText('Cuentas').length).toBeGreaterThanOrEqual(1)
     expect(screen.getByRole('link', { name: /ver ticket tck-new/i })).toHaveAttribute('href', `/cliente/tickets/${newerTicket.id}`)
   })
 
@@ -264,10 +264,13 @@ describe('conversión desde el chatbot', () => {
     await fillTicketForm()
 
     await userEvent.click(screen.getByRole('button', { name: /convertir en ticket/i }))
+    expect(screen.getByRole('alertdialog', { name: /confirmar conversión/i })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: /convertir en ticket/i }))
     expect(await screen.findByRole('alert')).toHaveTextContent(/no pudimos convertir la conversación/i)
     expect(sessionStorage.getItem('chat_conversation_id')).toBe(conversation.id)
     expect(screen.getByLabelText('Asunto')).toHaveValue('Nueva solicitud')
 
+    await userEvent.click(screen.getByRole('button', { name: /convertir en ticket/i }))
     await userEvent.click(screen.getByRole('button', { name: /convertir en ticket/i }))
     await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(`/cliente/tickets/${createdTicket.id}`))
     expect(screen.getByText('TCK-CREATED')).toBeInTheDocument()

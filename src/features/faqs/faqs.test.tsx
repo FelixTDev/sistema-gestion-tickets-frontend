@@ -24,7 +24,12 @@ function jsonResponse(data: unknown, status = 200): Response {
 function mockFaqRequests(currentFaqs = faqs, currentCategories = categories) {
   return vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
     const url = String(input)
-    return url.endsWith('/categories') ? jsonResponse(currentCategories) : jsonResponse(currentFaqs)
+    if (url.endsWith('/categories')) return jsonResponse(currentCategories)
+    const request = new URL(url)
+    const search = request.searchParams.get('search')?.toLocaleLowerCase() ?? ''
+    const categoryId = request.searchParams.get('category_id') ?? ''
+    const filtered = currentFaqs.filter((faq) => faq.is_active && (!categoryId || faq.category_id === categoryId) && (!search || `${faq.question} ${faq.keywords}`.toLocaleLowerCase().includes(search)))
+    return jsonResponse({ page: 1, page_size: 10, total: filtered.length, total_pages: filtered.length ? 1 : 0, items: filtered })
   })
 }
 
@@ -68,18 +73,19 @@ describe('página pública de preguntas frecuentes', () => {
     expect(screen.getByRole('link', { name: /iniciar conversación/i })).toHaveAttribute('href', '/chat')
   })
 
-  it('busca localmente por pregunta o palabras clave y combina el filtro', async () => {
-    mockFaqRequests()
+  it('envía búsqueda y categoría al backend y muestra sus resultados', async () => {
+    const fetchMock = mockFaqRequests()
     renderFaqPage()
     await screen.findByText('¿Cómo consulto mi cuenta?')
 
     await userEvent.type(screen.getByRole('searchbox', { name: /buscar/i }), 'seguridad')
     expect(screen.getByText('¿Cómo bloqueo una tarjeta?')).toBeInTheDocument()
     expect(screen.queryByText('¿Cómo consulto mi cuenta?')).not.toBeInTheDocument()
+    expect(fetchMock.mock.calls.some(([input]) => String(input).includes('search=seguridad'))).toBe(true)
 
     const categoryGrid = screen.getByLabelText('Filtrar por categoría')
     await userEvent.click(within(categoryGrid).getByRole('button', { name: /cuentas/i }))
-    expect(screen.getByText(/sin resultados/i)).toBeInTheDocument()
+    expect(await screen.findByText(/aún no hay preguntas frecuentes disponibles/i)).toBeInTheDocument()
   })
 
   it('muestra estado de carga', () => {

@@ -9,11 +9,14 @@ import {
   conversationQueryKey,
   useConversationQuery,
   useCreateConversationMutation,
+  useEscalateConversationMutation,
+  useFeedbackConversationMutation,
   useLinkConversationMutation,
+  useResetConversationMutation,
   useSendMessageMutation,
 } from './hooks/use-chat-conversation'
 import { chatMessageSchema } from './schemas/chat-message-schema'
-import type { ConversationRead } from './types/chatbot-types'
+import type { ConversationRead, SendMessageResponse } from './types/chatbot-types'
 
 interface ChatbotContextValue {
   conversation: ConversationRead | null
@@ -23,12 +26,20 @@ interface ChatbotContextValue {
   isRestoring: boolean
   isCreating: boolean
   isSending: boolean
+  isResetting: boolean
+  isEscalating: boolean
+  isSendingFeedback: boolean
   offersTicket: boolean
   resolved: boolean
+  lastResponse: SendMessageResponse | null
+  feedbackSubmitted: boolean
   canUseChatbot: boolean
   setDraft: (value: string) => void
   sendMessage: () => Promise<void>
   startNewConversation: () => Promise<void>
+  resetCurrentConversation: () => Promise<void>
+  escalateConversation: (reason?: string | null) => Promise<void>
+  sendFeedback: (isHelpful: boolean, escalationAccepted?: boolean | null, reason?: string | null) => Promise<void>
   clearConversationAfterTicket: (conversationId: string) => void
   retry: () => void
 }
@@ -54,6 +65,10 @@ function isUnavailableError(error: unknown): boolean {
   return error instanceof ApiError && (error.status === 403 || error.status === 404)
 }
 
+function isAbortError(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && 'name' in error && error.name === 'AbortError'
+}
+
 export function ChatbotProvider({ children }: { children: ReactNode }) {
   const { user, isLoading: isAuthLoading } = useAuth()
   const { pathname } = useLocation()
@@ -64,6 +79,8 @@ export function ChatbotProvider({ children }: { children: ReactNode }) {
   const [operationError, setOperationError] = useState<string | null>(null)
   const [offersTicket, setOffersTicket] = useState(false)
   const [resolved, setResolved] = useState(false)
+  const [lastResponse, setLastResponse] = useState<SendMessageResponse | null>(null)
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false)
   const [readyClientConversationId, setReadyClientConversationId] = useState<string | null>(null)
   const [isLinking, setIsLinking] = useState(false)
   const [linkRetryNonce, setLinkRetryNonce] = useState(0)
@@ -75,6 +92,9 @@ export function ChatbotProvider({ children }: { children: ReactNode }) {
   const createMutation = useCreateConversationMutation()
   const sendMutation = useSendMessageMutation()
   const linkMutation = useLinkConversationMutation()
+  const resetMutation = useResetConversationMutation()
+  const escalateMutation = useEscalateConversationMutation()
+  const feedbackMutation = useFeedbackConversationMutation()
 
   function clearCurrentConversation(): void {
     if (conversationId) queryClient.removeQueries({ queryKey: conversationQueryKey(conversationId) })
@@ -83,6 +103,8 @@ export function ChatbotProvider({ children }: { children: ReactNode }) {
     setReadyClientConversationId(null)
     setOffersTicket(false)
     setResolved(false)
+    setLastResponse(null)
+    setFeedbackSubmitted(false)
   }
 
   useEffect(() => {
@@ -103,9 +125,10 @@ export function ChatbotProvider({ children }: { children: ReactNode }) {
     if (linkAttempts.current.has(attemptKey)) return
     linkAttempts.current.add(attemptKey)
     let isActive = true
+    const controller = new AbortController()
     setIsLinking(true)
     void queryClient.cancelQueries({ queryKey: conversationQueryKey(conversationId) })
-      .then(() => linkMutation.mutateAsync(conversationId))
+      .then(() => linkMutation.mutateAsync({ conversationId, signal: controller.signal }))
       .then((linked) => {
         if (!isActive) return
         if (!isConversationId(linked.id) || linked.id !== conversationId) throw new Error('El servicio devolvió una asociación inválida.')
@@ -113,7 +136,7 @@ export function ChatbotProvider({ children }: { children: ReactNode }) {
         setReadyClientConversationId(conversationId)
       })
       .catch((error: unknown) => {
-        if (!isActive) return
+        if (!isActive || isAbortError(error)) return
         linkAttempts.current.delete(attemptKey)
         if (isUnavailableError(error)) clearCurrentConversation()
         else setOperationError('No pudimos asociar la conversación. Podrás intentarlo nuevamente más tarde.')
@@ -121,6 +144,7 @@ export function ChatbotProvider({ children }: { children: ReactNode }) {
       .finally(() => { if (isActive) setIsLinking(false) })
     return () => {
       isActive = false
+      controller.abort()
       linkAttempts.current.delete(attemptKey)
     }
   }, [canUseChatbot, conversationId, linkRetryNonce, queryClient, readyClientConversationId, user])
@@ -134,6 +158,8 @@ export function ChatbotProvider({ children }: { children: ReactNode }) {
     queryClient.setQueryData(conversationQueryKey(created.id), created)
     setOffersTicket(false)
     setResolved(false)
+    setLastResponse(null)
+    setFeedbackSubmitted(false)
     return created
   }
 
@@ -149,11 +175,35 @@ export function ChatbotProvider({ children }: { children: ReactNode }) {
       queryClient.setQueryData<ConversationRead>(conversationQueryKey(target.id), (current) => ({
         ...(current ?? emptyConversation(target.id)),
         messages: [...(current?.messages ?? []), response.user_message, response.bot_message],
+        status: response.conversation_status ?? current?.status ?? 'ACTIVE',
+        last_confidence: response.confidence ?? current?.last_confidence ?? null,
+        last_faq_id: response.faq_id ?? current?.last_faq_id ?? null,
       }))
       setOffersTicket(response.offers_ticket)
       setResolved(response.resolved)
+      setLastResponse(response)
+      setFeedbackSubmitted(false)
       setDraft('')
     } catch { setOperationError('No pudimos enviar tu consulta. Inténtalo nuevamente.') }
+  }
+
+  async function resetCurrentConversation(): Promise<void> {
+    if (!canUseChatbot) return
+    if (!conversationId) {
+      await startNewConversation()
+      return
+    }
+    const previousConversationId = conversationId
+    clearCurrentConversation()
+    setDraft('')
+    setValidationError(null)
+    setOperationError(null)
+    try {
+      // The reset endpoint returns the existing transcript. It is only a server-side
+      // lifecycle action here; never put that response back in the active cache.
+      await resetMutation.mutateAsync(previousConversationId)
+      await createAndSelectConversation()
+    } catch { setOperationError('No pudimos reiniciar la conversación. Inténtalo nuevamente.') }
   }
 
   async function startNewConversation(): Promise<void> {
@@ -161,6 +211,25 @@ export function ChatbotProvider({ children }: { children: ReactNode }) {
     setOperationError(null)
     try { await createAndSelectConversation() }
     catch { setOperationError('No pudimos iniciar una nueva conversación.') }
+  }
+
+  async function escalateConversation(reason?: string | null): Promise<void> {
+    if (!canUseChatbot || !conversationId) return
+    setOperationError(null)
+    try {
+      const escalated = await escalateMutation.mutateAsync({ conversationId, reason })
+      queryClient.setQueryData(conversationQueryKey(conversationId), escalated)
+      setOffersTicket(true)
+    } catch { setOperationError('No pudimos escalar la conversación. Inténtalo nuevamente.') }
+  }
+
+  async function sendFeedback(isHelpful: boolean, escalationAccepted?: boolean | null, reason?: string | null): Promise<void> {
+    if (!canUseChatbot || !conversationId) return
+    setOperationError(null)
+    try {
+      await feedbackMutation.mutateAsync({ conversationId, isHelpful, escalationAccepted, reason })
+      setFeedbackSubmitted(true)
+    } catch { setOperationError('No pudimos registrar tu valoración. Inténtalo nuevamente.') }
   }
 
   function clearConversationAfterTicket(convertedConversationId: string): void {
@@ -174,7 +243,10 @@ export function ChatbotProvider({ children }: { children: ReactNode }) {
     isRestoring: conversationQuery.isLoading || isLinking,
     isCreating: createMutation.isPending,
     isSending: sendMutation.isPending,
-    offersTicket, resolved, canUseChatbot, setDraft, sendMessage, startNewConversation, clearConversationAfterTicket,
+    isResetting: resetMutation.isPending,
+    isEscalating: escalateMutation.isPending,
+    isSendingFeedback: feedbackMutation.isPending,
+    offersTicket, resolved, lastResponse, feedbackSubmitted, canUseChatbot, setDraft, sendMessage, startNewConversation, resetCurrentConversation, escalateConversation, sendFeedback, clearConversationAfterTicket,
     retry: () => {
       setOperationError(null)
       if (user?.role === 'CLIENTE' && conversationId && readyClientConversationId !== conversationId) {
@@ -183,7 +255,7 @@ export function ChatbotProvider({ children }: { children: ReactNode }) {
         void conversationQuery.refetch()
       }
     },
-  }), [canUseChatbot, conversation, conversationId, conversationQuery, createMutation.isPending, draft, error, isLinking, offersTicket, readyClientConversationId, resolved, sendMutation.isPending, user, validationError])
+  }), [canUseChatbot, conversation, conversationId, conversationQuery, createMutation.isPending, draft, error, escalateMutation.isPending, feedbackMutation.isPending, feedbackSubmitted, isLinking, lastResponse, offersTicket, readyClientConversationId, resetMutation.isPending, resolved, sendMutation.isPending, user, validationError])
 
   return <ChatbotContext.Provider value={value}>{children}</ChatbotContext.Provider>
 }

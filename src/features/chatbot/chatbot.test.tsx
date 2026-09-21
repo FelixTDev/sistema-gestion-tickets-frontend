@@ -12,6 +12,7 @@ import type { ReactNode } from 'react'
 import { ChatbotProvider, useChatbot } from './chatbot-provider'
 import { ConversationPanel } from './components/conversation-panel'
 import { ChatbotWidget } from './components/chatbot-widget'
+import { ChatPage } from './pages/chat-page'
 
 const emptyConversation = {
   id: '11111111-1111-4111-8111-111111111111', user_id: null, status: 'ACTIVE',
@@ -126,6 +127,44 @@ describe('conversación del asistente', () => {
     await userEvent.click(screen.getByRole('button', { name: /reintentar/i }))
     expect(await screen.findByText(botMessage.content)).toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('muestra solo metadatos públicos de las referencias de FAQ', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(jsonResponse(emptyConversation, 201))
+      .mockResolvedValueOnce(jsonResponse({
+        user_message: userMessage,
+        bot_message: botMessage,
+        resolved: true,
+        offers_ticket: false,
+        sources: [{ title: 'Requisitos de tarjeta', category: 'Tarjetas', faq_id: 'faq-interno', score: '0.98', path: '/private/index' }],
+      }))
+    await renderHarness()
+
+    await userEvent.type(screen.getByLabelText('Escribe tu consulta'), userMessage.content)
+    await userEvent.click(screen.getByRole('button', { name: 'Enviar' }))
+
+    expect(await screen.findByText(/Título: Requisitos de tarjeta/)).toBeInTheDocument()
+    expect(screen.getByText(/Categoría: Tarjetas/)).toBeInTheDocument()
+    expect(screen.queryByText('faq-interno')).not.toBeInTheDocument()
+    expect(screen.queryByText('0.98')).not.toBeInTheDocument()
+    expect(screen.queryByText('/private/index')).not.toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('mantiene el transcript y el compositor dentro del viewport acotado de la página', async () => {
+    renderHarness(<ChatPage />)
+
+    const panel = screen.getByRole('region', { name: 'Asistente de atención' })
+    const viewport = panel.parentElement
+    const messageScroller = panel.querySelector('.overflow-y-auto')
+    const composer = panel.querySelector('form')
+
+    expect(viewport).toHaveClass('flex', 'min-h-0', 'flex-col')
+    expect(panel).toHaveClass('h-full', 'min-h-0')
+    expect(messageScroller).toHaveClass('min-h-0')
+    expect(composer).toHaveClass('shrink-0', 'flex-wrap')
+    expect(panel.querySelector('textarea')).toHaveClass('min-w-0')
   })
 })
 
@@ -331,9 +370,13 @@ describe('widget y escalamiento visual', () => {
 
   it('pide confirmación antes de sustituir una conversación con mensajes', async () => {
     sessionStorage.setItem('chat_conversation_id', '11111111-1111-4111-8111-111111111111')
-    const fetchMock = vi.spyOn(globalThis, 'fetch')
-      .mockResolvedValueOnce(jsonResponse({ ...emptyConversation, messages: [userMessage, botMessage] }))
-      .mockResolvedValueOnce(jsonResponse({ ...emptyConversation, id: '22222222-2222-4222-8222-222222222222' }, 201))
+    const replacementConversation = { ...emptyConversation, id: '22222222-2222-4222-8222-222222222222' }
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
+      const url = String(input)
+      if (url.endsWith('/chat/conversations/11111111-1111-4111-8111-111111111111/reset')) return Promise.resolve(jsonResponse({ ...emptyConversation, messages: [userMessage, botMessage] }))
+      if (init?.method === 'POST' && url.endsWith('/chat/conversations')) return Promise.resolve(jsonResponse(replacementConversation, 201))
+      return Promise.resolve(jsonResponse({ ...emptyConversation, messages: [userMessage, botMessage] }))
+    })
     await renderHarness()
     await screen.findByText(botMessage.content)
 
@@ -345,7 +388,10 @@ describe('widget y escalamiento visual', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /nueva conversación/i }))
     await userEvent.click(screen.getByRole('button', { name: /^crear nueva$/i }))
-    await waitFor(() => expect(sessionStorage.getItem('chat_conversation_id')).toBe('22222222-2222-4222-8222-222222222222'))
+    await waitFor(() => expect(sessionStorage.getItem('chat_conversation_id')).toBe(replacementConversation.id))
+    expect(screen.queryByText(botMessage.content)).not.toBeInTheDocument()
+    expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith('/chat/conversations/11111111-1111-4111-8111-111111111111/reset'))).toBe(true)
+    expect(fetchMock.mock.calls.some(([input, init]) => String(input).endsWith('/chat/conversations') && init?.method === 'POST')).toBe(true)
   })
 
   it('ofrece login y registro al visitante cuando el backend ofrece ticket', async () => {

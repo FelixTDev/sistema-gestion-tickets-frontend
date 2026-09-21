@@ -47,7 +47,7 @@ export function Button({
       type={type}
       disabled={isDisabled}
       aria-busy={loading || undefined}
-      className={`inline-flex select-none items-center justify-center gap-2 rounded-[10px] font-display font-semibold transition-all duration-150 ${
+      className={`inline-flex select-none items-center justify-center gap-2 rounded-[10px] font-display font-semibold transition-[background-color,border-color,color,box-shadow,transform] duration-150 ${
         sizeClasses[size]
       } ${variantClasses[variant]} ${full ? 'w-full' : ''} ${
         isDisabled ? 'cursor-not-allowed opacity-55' : 'active:scale-[0.98]'

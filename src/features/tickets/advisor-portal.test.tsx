@@ -33,7 +33,7 @@ describe('portal del asesor', () => {
   it('deriva los indicadores del dashboard desde la bandeja real y no muestra rutas supervisoras', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
       const url = String(input)
-      if (url.endsWith('/tickets')) return Promise.resolve(json(tickets))
+      if (url.includes('/tickets/operations') || url.endsWith('/tickets')) return Promise.resolve(json(tickets))
       if (url.endsWith('/categories')) return Promise.resolve(json([{ id: 'cat-1', name: 'Cuentas', description: null, is_active: true, created_at: '', updated_at: '' }]))
       return Promise.resolve(json({ detail: 'Unexpected' }, 500))
     })
@@ -47,14 +47,14 @@ describe('portal del asesor', () => {
     expect(screen.getByText('Solicitud urgente')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /bandeja de tickets/i })).toHaveAttribute('href', '/personal/tickets')
     expect(screen.queryByRole('link', { name: /reportes|conocimiento|asignación/i })).not.toBeInTheDocument()
-    expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith('/tickets'))).toBe(true)
+    expect(fetchMock.mock.calls.some(([input]) => String(input).includes('/tickets/operations'))).toBe(true)
   })
 
   it('mantiene el detalle sin realizar solicitudes con un id de ticket malformado', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(json({ detail: 'Unexpected' }, 500))
     renderApp('/personal/tickets/%20')
     await userEvent.setup().click(screen.getByRole('link', { name: /bandeja de tickets/i }))
-    expect(fetchMock.mock.calls.some(([input]) => String(input).includes('/tickets/'))).toBe(false)
+    expect(fetchMock.mock.calls.some(([input]) => String(input).includes('/tickets/%20'))).toBe(false)
   })
 
   it('no ofrece comentar un ticket que no está asignado al asesor', async () => {

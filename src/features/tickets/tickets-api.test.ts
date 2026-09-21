@@ -9,9 +9,16 @@ import {
   getTicketComments,
   getTicket,
   getTicketHistory,
+  getTicketSla,
+  listAttachments,
+  listOperationalTickets,
   listTickets,
   listMyTickets,
+  markAttachmentDeleted,
   reopenTicket,
+  takeTicket,
+  releaseTicket,
+  uploadAttachment,
 } from './api/ticket-api'
 import type { TicketCreate, TicketListFilters, TicketRead } from './types/ticket-types'
 
@@ -137,5 +144,47 @@ describe('API de tickets del cliente', () => {
     await expect(convertConversationToTicket('../conversaciones', payload)).rejects.toThrow(/identificador.*inválido/i)
 
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('envía filtros reales y normaliza la respuesta paginada de la bandeja operativa', async () => {
+    const page = { page: 2, page_size: 10, total: 11, total_pages: 2, items: [ticket] }
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse(page))
+
+    await expect(listOperationalTickets({ queue: 'sla_overdue', search: 'tarjeta', page: 2, page_size: 10 })).resolves.toEqual(page)
+
+    const url = new URL(String(fetchMock.mock.calls[0][0]))
+    expect(url.pathname).toMatch(/\/tickets\/operations$/)
+    expect(url.searchParams.get('queue')).toBe('sla_overdue')
+    expect(url.searchParams.get('search')).toBe('tarjeta')
+    expect(url.searchParams.get('page')).toBe('2')
+    expect(url.searchParams.get('page_size')).toBe('10')
+  })
+
+  it('usa las acciones operativas, SLA y adjuntos del contrato real', async () => {
+    const attachment = { id: 'attachment-1', ticket_id: ticket.id, comment_id: null, uploaded_by_user_id: 'client-1', original_filename: 'consulta.txt', mime_type_declared: 'text/plain', mime_type_detected: 'text/plain', file_size: 10, sha256: 'hash', status: 'ACTIVE', created_at: '2026-09-12T20:00:00Z', deleted_at: null }
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(jsonResponse(ticket))
+      .mockResolvedValueOnce(jsonResponse(ticket))
+      .mockResolvedValueOnce(jsonResponse({ id: 'sla-1', ticket_id: ticket.id, status: 'ACTIVE' }))
+      .mockResolvedValueOnce(jsonResponse([attachment]))
+      .mockResolvedValueOnce(jsonResponse(attachment))
+      .mockResolvedValueOnce(jsonResponse(attachment))
+
+    await takeTicket(ticket.id)
+    await releaseTicket(ticket.id)
+    await getTicketSla(ticket.id)
+    await listAttachments(ticket.id)
+    const file = new File(['contenido'], 'consulta.txt', { type: 'text/plain' })
+    await uploadAttachment(ticket.id, file)
+    await markAttachmentDeleted('attachment-1')
+
+    expect(fetchMock.mock.calls.map(([input, init]) => `${init?.method ?? 'GET'} ${String(input)}`)).toEqual([
+      expect.stringMatching(/POST .*\/tickets\/ticket-1\/take$/),
+      expect.stringMatching(/POST .*\/tickets\/ticket-1\/release$/),
+      expect.stringMatching(/GET .*\/tickets\/ticket-1\/sla$/),
+      expect.stringMatching(/GET .*\/tickets\/ticket-1\/attachments$/),
+      expect.stringMatching(/POST .*\/tickets\/ticket-1\/attachments$/),
+      expect.stringMatching(/DELETE .*\/attachments\/attachment-1$/),
+    ])
   })
 })

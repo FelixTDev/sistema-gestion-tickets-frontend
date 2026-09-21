@@ -10,9 +10,10 @@ import { Icon } from '../../components/ui/icons'
 import { ApiError } from '../../lib/api-client'
 import type { LoginRequest, RegisterRequest, Role, Session } from '../../types/auth'
 import { useAuth } from './auth-provider'
-import { register } from './auth-service'
+import type { ChangePasswordRequest, ForgotPasswordRequest, ResetPasswordRequest } from './auth-types'
+import { changePassword, forgotPassword, register, resetPassword, verifyEmail } from './auth-service'
+import { changePasswordSchema, forgotPasswordSchema, passwordConfirmationSchema, passwordRule } from './auth-schemas'
 
-const passwordRule = z.string().min(8, 'La contraseña debe cumplir las reglas.').max(128, 'La contraseña debe cumplir las reglas.').regex(/[A-Z]/, 'La contraseña debe cumplir las reglas.').regex(/[a-z]/, 'La contraseña debe cumplir las reglas.').regex(/[0-9]/, 'La contraseña debe cumplir las reglas.')
 const loginSchema = z.object({ email: z.string().trim().email('Ingresa un correo válido.'), password: z.string().min(1, 'La contraseña es obligatoria.') })
 const registerSchema = z.object({ full_name: z.string().trim().min(1, 'El nombre completo es obligatorio.'), email: z.string().trim().email('Ingresa un correo válido.'), phone: z.string().optional(), password: passwordRule, confirmPassword: z.string().min(1, 'Confirma tu contraseña.') }).refine((data) => data.password === data.confirmPassword, { path: ['confirmPassword'], message: 'Las contraseñas no coinciden.' })
 const errorMessage = (error: unknown, conflict: string): string => error instanceof ApiError && error.status === 409 ? conflict : error instanceof ApiError && error.status === 422 ? 'Revisa los datos ingresados.' : 'No fue posible completar la solicitud. Inténtalo nuevamente.'
@@ -152,13 +153,21 @@ export function RegisterForm() {
 }
 
 export function RecoverPasswordForm() {
-  return <AuthShell side="client" title="Recuperar contraseña" subtitle="Esta opción estará disponible próximamente.">
+  const [serverError, setServerError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
+  const { register: field, handleSubmit, formState: { errors, isSubmitting } } = useForm<ForgotPasswordRequest>({ resolver: zodResolver(forgotPasswordSchema) })
+  const submit = async (data: ForgotPasswordRequest) => {
+    setServerError(null)
+    try { await forgotPassword(data); setSuccess(true) } catch (error: unknown) { setServerError(errorMessage(error, 'No fue posible solicitar la recuperación.')) }
+  }
+
+  return <AuthShell side="client" title="Recuperar contraseña" subtitle="Solicita un enlace para definir una contraseña nueva.">
     <div className="space-y-4">
-      <Feedback kind="info"><strong>Funcionalidad no disponible</strong><span className="mt-1 block">No es posible solicitar un enlace de recuperación desde este portal.</span></Feedback>
-      <form className="space-y-4" aria-label="Recuperación de contraseña">
-        <Field label="Correo electrónico" hint="El envío se encuentra deshabilitado."><Input type="email" autoComplete="email" placeholder="correo@ejemplo.com" disabled /></Field>
-        <Button type="button" full size="lg" icon={Icon.send} disabled>Enviar enlace</Button>
-      </form>
+      {serverError && <Feedback>{serverError}</Feedback>}
+      {success ? <Feedback kind="success">Si el correo está registrado, recibirás instrucciones para recuperar tu contraseña.</Feedback> : <form onSubmit={handleSubmit(submit)} className="space-y-4" aria-label="Recuperación de contraseña" noValidate>
+        <Field label="Correo electrónico" required error={errors.email?.message}><Input type="email" autoComplete="email" placeholder="correo@ejemplo.com" {...field('email')} /></Field>
+        <Button type="submit" full size="lg" icon={Icon.send} loading={isSubmitting}>{isSubmitting ? 'Enviando enlace…' : 'Enviar enlace'}</Button>
+      </form>}
       <div className="pt-2 text-center text-[14px] text-muted space-y-3">
         <Link to="/login" className="inline-flex min-h-11 items-center justify-center gap-1.5 text-[13.5px] text-muted hover:text-ink"><Icon.arrowL size={14} /> Volver al inicio de sesión</Link>
         <div>
@@ -169,4 +178,65 @@ export function RecoverPasswordForm() {
       </div>
     </div>
   </AuthShell>
+}
+
+export function ResetPasswordForm({ token }: { token: string }) {
+  const [serverError, setServerError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
+  const { register: field, handleSubmit, formState: { errors, isSubmitting } } = useForm<ResetPasswordRequest & { confirmPassword: string }>({ resolver: zodResolver(passwordConfirmationSchema) })
+  const submit = async (data: ResetPasswordRequest & { confirmPassword: string }) => {
+    setServerError(null)
+    try { await resetPassword({ token: token || undefined, new_password: data.new_password }); setSuccess(true) } catch (error: unknown) { setServerError(errorMessage(error, 'No fue posible restablecer la contraseña.')) }
+  }
+
+  return <AuthShell side="client" title="Restablecer contraseña" subtitle="Define una contraseña nueva para tu cuenta.">
+    <div className="space-y-4">
+      {!token && <Feedback>El enlace de recuperación no contiene un token válido. Solicita uno nuevo.</Feedback>}
+      {serverError && <Feedback>{serverError}</Feedback>}
+      {success ? <Feedback kind="success">Contraseña actualizada. Ya puedes iniciar sesión.</Feedback> : <form onSubmit={handleSubmit(submit)} className="space-y-4" aria-label="Restablecimiento de contraseña" noValidate>
+        <Field label="Nueva contraseña" required tooltip="Mínimo 8 caracteres, con mayúscula, minúscula y número." error={errors.new_password?.message}><Input id="reset-new-password" type="password" autoComplete="new-password" {...field('new_password')} /></Field>
+        <Field label="Confirmar contraseña" required error={errors.confirmPassword?.message}><Input id="reset-confirm-password" type="password" autoComplete="new-password" {...field('confirmPassword')} /></Field>
+        <Button type="submit" full size="lg" icon={Icon.lock} loading={isSubmitting} disabled={!token}>{isSubmitting ? 'Guardando…' : 'Guardar contraseña'}</Button>
+      </form>}
+      <div className="pt-2 text-center text-[14px] text-muted"><Link to="/login" className="inline-flex min-h-11 items-center justify-center gap-1.5 text-[13.5px] hover:text-ink"><Icon.arrowL size={14} /> Volver al inicio de sesión</Link></div>
+    </div>
+  </AuthShell>
+}
+
+export function ChangePasswordForm() {
+  const [serverError, setServerError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
+  const { register: field, handleSubmit, formState: { errors, isSubmitting }, reset } = useForm<ChangePasswordRequest & { confirmPassword: string }>({ resolver: zodResolver(changePasswordSchema) })
+  const submit = async (data: ChangePasswordRequest & { confirmPassword: string }) => {
+    setServerError(null)
+    try { await changePassword({ current_password: data.current_password, new_password: data.new_password }); setSuccess(true); reset() } catch (error: unknown) { setServerError(errorMessage(error, 'No fue posible cambiar la contraseña.')) }
+  }
+
+  return <div className="space-y-4">
+    {serverError && <Feedback>{serverError}</Feedback>}
+    {success && <Feedback kind="success">Contraseña actualizada correctamente.</Feedback>}
+    <form onSubmit={handleSubmit(submit)} className="space-y-4" aria-label="Cambio de contraseña" noValidate>
+      <Field label="Contraseña actual" required error={errors.current_password?.message}><Input type="password" autoComplete="current-password" {...field('current_password')} /></Field>
+      <Field label="Nueva contraseña" required tooltip="Mínimo 8 caracteres, con mayúscula, minúscula y número." error={errors.new_password?.message}><Input type="password" autoComplete="new-password" {...field('new_password')} /></Field>
+      <Field label="Confirmar nueva contraseña" required error={errors.confirmPassword?.message}><Input type="password" autoComplete="new-password" {...field('confirmPassword')} /></Field>
+      <Button type="submit" full loading={isSubmitting} icon={Icon.lock}>{isSubmitting ? 'Cambiando…' : 'Cambiar contraseña'}</Button>
+    </form>
+  </div>
+}
+
+export function VerifyEmailForm({ token }: { token: string }) {
+  const [serverError, setServerError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const submit = async () => {
+    setServerError(null); setIsSubmitting(true)
+    try { await verifyEmail({ token: token || undefined }); setSuccess(true) } catch (error: unknown) { setServerError(errorMessage(error, 'No fue posible verificar el correo.')) } finally { setIsSubmitting(false) }
+  }
+
+  return <div className="space-y-4">
+    {!token && <Feedback kind="info">Abre el enlace enviado a tu correo para verificarlo.</Feedback>}
+    {serverError && <Feedback>{serverError}</Feedback>}
+    {success && <Feedback kind="success">Correo verificado correctamente.</Feedback>}
+    {!success && token && <Button type="button" full loading={isSubmitting} icon={Icon.mail} onClick={() => { void submit() }}>Verificar correo</Button>}
+  </div>
 }

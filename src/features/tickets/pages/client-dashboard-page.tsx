@@ -5,12 +5,12 @@ import { EmptyState, ErrorState, LoadingState } from '../../../components/ui/sta
 import { Icon, type IconComponent } from '../../../components/ui/icons'
 import { TicketList } from '../components/ticket-list'
 import { sortTicketsNewestFirst } from '../ticket-utils'
-import { useMyTickets } from '../hooks/use-tickets'
+import { ticketItems, useMyTickets } from '../hooks/use-tickets'
 
 export function ClientDashboardPage() {
   const tickets = useMyTickets()
   const categories = useCategories()
-  const data = Array.isArray(tickets.data) ? tickets.data : []
+  const data = ticketItems(tickets.data)
   const categoryData = Array.isArray(categories.data) ? categories.data : []
   const counts = {
     total: data.length,

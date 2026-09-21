@@ -12,11 +12,12 @@ describe('supervisor report pages', () => {
     expect(container.textContent).not.toContain('NaN')
   })
 
-  it('keeps export visibly unavailable', () => {
+  it('exposes the real CSV export control', () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(() => new Promise<Response>(() => undefined))
     renderWithQueryClient(<ReportsPage />)
-    expect(screen.getByRole('button', { name: /exportar/i })).toBeDisabled()
-    expect(screen.getByText(/funcionalidad no disponible/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /exportar csv/i })).toBeEnabled()
+    expect(screen.getByRole('combobox', { name: /reporte a exportar/i })).toBeInTheDocument()
+    expect(screen.queryByText(/funcionalidad no disponible/i)).not.toBeInTheDocument()
   })
 
   it('keeps successful report sections visible when one report fails', async () => {

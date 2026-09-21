@@ -5,12 +5,12 @@ import { LoadingState, ErrorState, EmptyState } from '../../../components/ui/sta
 import { Icon } from '../../../components/ui/icons'
 import { TicketAssignment } from '../components/ticket-assignment'
 import { emptyTicketFilters } from '../components/ticket-filters'
-import { useAdvisors, useOperationalTickets } from '../hooks/use-tickets'
+import { ticketItems, useAdvisors, useOperationalTickets } from '../hooks/use-tickets'
 
 export function TicketAssignmentPage() {
-  const tickets = useOperationalTickets(emptyTicketFilters)
+  const tickets = useOperationalTickets({ ...emptyTicketFilters, queue: 'unassigned' })
   const advisors = useAdvisors()
-  const unassigned = useMemo(() => (tickets.data ?? []).filter((ticket) => ticket.assigned_advisor_id === null && ticket.status !== 'CERRADO' && ticket.status !== 'CANCELADO'), [tickets.data])
+  const unassigned = useMemo(() => ticketItems(tickets.data).filter((ticket) => ticket.assigned_advisor_id === null && ticket.status !== 'CERRADO' && ticket.status !== 'CANCELADO'), [tickets.data])
   const [selectedId, setSelectedId] = useState('')
   const selected = unassigned.find((ticket) => ticket.id === selectedId) ?? unassigned[0]
   return <section className="ticket-assignment-page">

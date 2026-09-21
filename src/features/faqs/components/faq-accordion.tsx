@@ -1,11 +1,14 @@
 import { useState } from 'react'
 import { Icon } from '../../../components/ui/icons'
 import { formatCategoryLabel, getCategoryIcon } from '../../../lib/formatters'
+import { useFaqFeedbackMutation } from '../hooks/use-faqs'
 import type { FAQRead } from '../types/faq-types'
 
 export function FaqAccordion({ faqs, categoryNames }: { faqs: FAQRead[]; categoryNames: Record<string, string> }) {
   const [openId, setOpenId] = useState<string | null>(faqs[0]?.id ?? null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [feedbackByFaq, setFeedbackByFaq] = useState<Record<string, boolean | undefined>>({})
+  const feedback = useFaqFeedbackMutation()
 
   function handleCopy(faqId: string, answer: string): void {
     void navigator.clipboard?.writeText?.(answer)
@@ -26,7 +29,7 @@ export function FaqAccordion({ faqs, categoryNames }: { faqs: FAQRead[]; categor
         return (
           <article
             key={faq.id}
-            className={`overflow-hidden rounded-[14px] border bg-white shadow-xs transition-all duration-200 ${
+            className={`overflow-hidden rounded-[14px] border bg-white shadow-xs transition-[background-color,border-color,box-shadow,transform] duration-200 ${
               isOpen
                 ? 'border-l-4 border-l-[#0b4963] border-y-[#d8e4e8] border-r-[#d8e4e8] shadow-sm'
                 : 'border-[#e6edef] hover:border-[#d2e0e4]'
@@ -69,6 +72,45 @@ export function FaqAccordion({ faqs, categoryNames }: { faqs: FAQRead[]; categor
                 className="gnb-fade border-t border-[#f0f4f5] bg-[#fafcfc] px-5 py-4 text-[14.5px] leading-relaxed text-[#4d626c]"
               >
                 <p className="whitespace-pre-line">{faq.answer}</p>
+
+                <div className="mt-4 rounded-[10px] border border-[#e6edef] bg-white p-3 text-[13px]">
+                  {feedbackByFaq[faq.id] === undefined ? (
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="font-semibold text-ink">¿Te fue útil esta respuesta?</span>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          className="min-h-10 rounded-md border border-[#cdd9de] px-3 font-semibold text-turq-dark hover:border-turq-dark disabled:opacity-50"
+                          disabled={feedback.isPending}
+                          onClick={() => {
+                            void feedback.mutateAsync({ faqId: faq.id, data: { is_helpful: true } }).then(() => {
+                              setFeedbackByFaq((current) => ({ ...current, [faq.id]: true }))
+                            })
+                          }}
+                        >
+                          Sí, fue útil
+                        </button>
+                        <button
+                          type="button"
+                          className="min-h-10 rounded-md border border-[#cdd9de] px-3 font-semibold text-ink hover:border-turq-dark disabled:opacity-50"
+                          disabled={feedback.isPending}
+                          onClick={() => {
+                            void feedback.mutateAsync({ faqId: faq.id, data: { is_helpful: false } }).then(() => {
+                              setFeedbackByFaq((current) => ({ ...current, [faq.id]: false }))
+                            })
+                          }}
+                        >
+                          No, no fue útil
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p role="status" className="font-semibold text-turq-dark">Gracias por tu feedback.</p>
+                  )}
+                  {feedback.isError && feedbackByFaq[faq.id] === undefined && (
+                    <p role="alert" className="mt-2 text-danger">No pudimos registrar tu feedback. Inténtalo nuevamente.</p>
+                  )}
+                </div>
 
                 <div className="mt-4 flex items-center justify-between border-t border-[#eef3f5] pt-3 text-[12.5px]">
                   <span className="inline-flex items-center gap-1.5 font-medium text-[#798c96]">

@@ -5,6 +5,8 @@ import { createElement, type ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { TicketAssignment } from './components/ticket-assignment'
 import { useAssignTicketMutation } from './hooks/use-tickets'
+import { StaffTicketsPage } from './pages/staff-tickets-page'
+import { TicketAssignmentPage } from './pages/ticket-assignment-page'
 import type { TicketRead } from './types/ticket-types'
 
 vi.mock('../auth/auth-provider', () => ({ useAuth: () => ({ user: { id: 'supervisor-1', full_name: 'Supervisión', email: 'supervisor@example.test', role: 'SUPERVISOR' }, session: null, isLoading: false, signIn: vi.fn(), signOut: vi.fn() }) }))
@@ -18,6 +20,39 @@ function Wrapper({ children }: { children: ReactNode }) { return createElement(Q
 
 describe('asignación de tickets del supervisor', () => {
   beforeEach(() => vi.restoreAllMocks())
+
+  it('consulta la cola sin asignar en la bandeja del supervisor', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.includes('/tickets/operations')) return response({ page: 1, page_size: 20, total: 0, total_pages: 0, items: [] })
+      if (url.endsWith('/categories')) return response([])
+      return response({ detail: 'unexpected' }, 500)
+    })
+
+    render(<Wrapper><StaffTicketsPage /></Wrapper>)
+
+    expect(await screen.findByRole('heading', { name: 'Bandeja de tickets' })).toBeInTheDocument()
+    const queue = screen.getByRole('combobox', { name: 'Cola operativa' })
+    expect(queue).toHaveValue('unassigned')
+    expect(screen.queryByRole('option', { name: 'Asignados a mí' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'Asignados a asesor' })).not.toBeInTheDocument()
+    await waitFor(() => expect(fetchMock.mock.calls.some(([input]) => String(input).includes('/tickets/operations?') && String(input).includes('queue=unassigned'))).toBe(true))
+  })
+
+  it('usa la cola sin asignar en la pantalla de asignación', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.includes('/tickets/operations')) return response({ page: 1, page_size: 20, total: 0, total_pages: 0, items: [] })
+      if (url.endsWith('/users/advisors')) return response(advisors)
+      return response({ detail: 'unexpected' }, 500)
+    })
+
+    render(<Wrapper><TicketAssignmentPage /></Wrapper>)
+
+    expect(await screen.findByText('No hay tickets sin asignar')).toBeInTheDocument()
+    expect(fetchMock.mock.calls.some(([input]) => String(input).includes('/tickets/operations?') && String(input).includes('queue=unassigned'))).toBe(true)
+    expect(fetchMock.mock.calls.some(([input]) => String(input).includes('queue=assigned_to_me'))).toBe(false)
+  })
 
   it('confirms before posting the real advisor id and exposes safe server failures', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => String(input).endsWith('/users/advisors') ? response(advisors) : init?.method === 'POST' ? response({ detail: 'internal conflict' }, 409) : response({ detail: 'unexpected' }, 500))
