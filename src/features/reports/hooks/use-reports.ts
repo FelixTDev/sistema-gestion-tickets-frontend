@@ -1,6 +1,6 @@
-import { useQuery } from '@tanstack/react-query'
-import { getCategoryReport, getPriorityReport, getReportSummary, getResolutionTimeReport, getStatusReport } from '../api/report-api'
-import type { ReportFilters } from '../types/report-types'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { exportReport, getCategoryReport, getPriorityReport, getReportSummary, getResolutionTimeReport, getStatusReport } from '../api/report-api'
+import type { ReportExportFilters, ReportFilters, ReportName } from '../types/report-types'
 
 export const reportQueryKey = (name: string, filters: ReportFilters) => ['report', name, filters] as const
 export function useReportSummary(filters: ReportFilters) { return useQuery({ queryKey: reportQueryKey('summary', filters), queryFn: () => getReportSummary(filters), retry: false }) }
@@ -9,3 +9,9 @@ export function useStatusReport(filters: ReportFilters) { return useQuery({ quer
 export function useCategoryReport(filters: ReportFilters) { return useQuery({ queryKey: reportQueryKey('category', filters), queryFn: () => getCategoryReport(filters), retry: false }) }
 export function usePriorityReport(filters: ReportFilters) { return useQuery({ queryKey: reportQueryKey('priority', filters), queryFn: () => getPriorityReport(filters), retry: false }) }
 export function useResolutionTimeReport(filters: ReportFilters) { return useQuery({ queryKey: reportQueryKey('resolution-time', filters), queryFn: () => getResolutionTimeReport(filters), retry: false }) }
+
+export function useExportReportMutation() {
+  return useMutation({
+    mutationFn: ({ reportName, filters }: { reportName: ReportName; filters?: ReportExportFilters }) => exportReport(reportName, filters),
+  })
+}

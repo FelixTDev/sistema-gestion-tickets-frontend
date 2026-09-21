@@ -316,10 +316,11 @@ code { padding: .15rem .35rem; border-radius: .3rem; background: #e6f1f2; font-s
 .report-summary-card { padding: var(--space-5); display: grid; gap: var(--space-2); }
 .report-summary-card span { color: var(--color-muted); font-size: .8rem; }
 .report-summary-card strong { color: var(--color-primary-900); font-size: 1.8rem; }
-.report-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-5); margin-top: var(--space-6); }
-.report-card { padding: var(--space-5); }
+.report-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-5); margin-top: var(--space-6); min-width: 0; }
+.report-grid > *, .report-summary-grid > * { min-width: 0; }
+.report-card { min-width: 0; max-width: 100%; padding: var(--space-5); }
 .report-card h2 { margin-top: 0; font-size: 1.05rem; }
-.report-table { width: 100%; border-collapse: collapse; }
+.report-table { width: 100%; min-width: 0; border-collapse: collapse; }
 .report-table th, .report-table td { padding: .65rem .35rem; border-bottom: 1px solid var(--color-border); text-align: left; }
 .report-table th[scope="row"] { font-weight: 600; }
 .report-bar-row { display: flex; align-items: center; gap: .5rem; }
@@ -418,9 +419,11 @@ code { padding: .15rem .35rem; border-radius: .3rem; background: #e6f1f2; font-s
 /* Supervisor reports, assignment and knowledge management */
 .reports-page, .supervisor-dashboard, .ticket-assignment-page, .knowledge-page { width: min(70rem, calc(100% - 2rem)); margin-inline: auto; }
 .reports-unavailable { margin: -1.5rem 0 1.25rem; color: var(--color-muted); font-size: .8rem; }
-.report-table-wrap { overflow-x: auto; }
+.report-table-wrap { width: 100%; min-width: 0; max-width: 100%; overflow-x: auto; }
 .report-bar-row { min-width: 8rem; }
 .report-bar { flex: 0 1 13rem; min-width: 0; transition: width .2s ease; }
+.advisor-dashboard, .advisor-dashboard > .grid, .advisor-dashboard > .grid > *, .advisor-dashboard .card, .advisor-dashboard .card > * { min-width: 0; max-width: 100%; }
+.advisor-dashboard .card a { min-width: 0; max-width: 100%; }
 .assignment-page-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(18rem, 1fr); align-items: start; gap: var(--space-5); }
 .assignment-column { display: grid; gap: var(--space-5); }
 .ticket-assignment-page h2, .ticket-assignment h2 { margin: 0; font-size: 1.05rem; }
@@ -458,6 +461,9 @@ code { padding: .15rem .35rem; border-radius: .3rem; background: #e6f1f2; font-s
   .knowledge-item-actions { justify-content: flex-start; }
   .knowledge-table th, .knowledge-table td { padding: .75rem .7rem; }
   .knowledge-table th:last-child, .knowledge-table td:last-child { min-width: 9rem; }
+  .report-card { overflow: hidden; }
+  .report-table th, .report-table td { overflow-wrap: anywhere; word-break: break-word; }
+  .report-bar-row { min-width: 0; }
 }
 
 /* Touch targets stay usable on compact/mobile layouts. */

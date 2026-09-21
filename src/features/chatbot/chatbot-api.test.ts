@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  convertConversationToTicket,
   createConversation,
+  escalateConversation,
+  feedbackConversation,
   linkConversationToUser,
+  resetConversation,
   sendConversationMessage,
 } from './api/chatbot-api'
 import {
@@ -73,6 +77,45 @@ describe('API del chatbot', () => {
     expect(url).toContain('/chat/conversations/11111111-1111-4111-8111-111111111111/link-user')
     expect(init).toEqual(expect.objectContaining({ method: 'POST' }))
     expect(init?.body).toBeUndefined()
+  })
+
+  it('propaga la señal de cancelación controlada para link-user', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ id: conversation.id, user_id: 'client-1', status: 'ACTIVE' }), { status: 200, headers: { 'Content-Type': 'application/json' } }),
+    )
+    const controller = new AbortController()
+
+    await linkConversationToUser(conversation.id, controller.signal)
+
+    expect(fetchMock.mock.calls[0]?.[1]?.signal).toBe(controller.signal)
+  })
+
+  it('ejecuta las acciones del ciclo de vida contra sus endpoints reales', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.endsWith('/escalate')) return new Response(JSON.stringify(conversation), { status: 200, headers: { 'Content-Type': 'application/json' } })
+      if (url.endsWith('/reset')) return new Response(JSON.stringify(conversation), { status: 200, headers: { 'Content-Type': 'application/json' } })
+      if (url.endsWith('/feedback')) return new Response(JSON.stringify({ id: 'feedback-1', is_helpful: false, escalation_accepted: true, created_at: '2026-09-12T20:03:00Z' }), { status: 201, headers: { 'Content-Type': 'application/json' } })
+      return new Response(JSON.stringify({ ...conversation, status: 'CONVERTED' }), { status: 201, headers: { 'Content-Type': 'application/json' } })
+    })
+    const id = conversation.id
+    await escalateConversation(id, { reason: 'Necesito una revisión humana' })
+    await resetConversation(id)
+    await feedbackConversation(id, { is_helpful: false, escalation_accepted: true, reason: 'No resolvió mi consulta' })
+    await convertConversationToTicket(id, { category_id: 'category-1', subject: 'Ayuda', description: 'Necesito ayuda con mi solicitud', priority: 'MEDIA' })
+
+    expect(fetchMock).toHaveBeenCalledTimes(4)
+    expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual([
+      expect.stringContaining(`/chat/conversations/${id}/escalate`),
+      expect.stringContaining(`/chat/conversations/${id}/reset`),
+      expect.stringContaining(`/chat/conversations/${id}/feedback`),
+      expect.stringContaining(`/chat/conversations/${id}/convert-to-ticket`),
+    ])
+    expect(fetchMock.mock.calls[0]?.[1]).toEqual(expect.objectContaining({ body: JSON.stringify({ reason: 'Necesito una revisión humana' }) }))
+    expect(fetchMock.mock.calls[1]?.[1]).toEqual(expect.objectContaining({ method: 'POST' }))
+    expect(fetchMock.mock.calls[1]?.[1]?.body).toBeUndefined()
+    expect(fetchMock.mock.calls[2]?.[1]).toEqual(expect.objectContaining({ body: JSON.stringify({ is_helpful: false, escalation_accepted: true, reason: 'No resolvió mi consulta' }) }))
+    expect(fetchMock.mock.calls[3]?.[1]).toEqual(expect.objectContaining({ body: JSON.stringify({ category_id: 'category-1', subject: 'Ayuda', description: 'Necesito ayuda con mi solicitud', priority: 'MEDIA' }) }))
   })
 })
 

@@ -4,12 +4,12 @@ import { Button } from '../../../components/ui/button'
 import { Modal } from '../../../components/ui/modal'
 import { Textarea } from '../../../components/ui/form-controls'
 import { useAuth } from '../../auth/auth-provider'
-import { useCancelTicketMutation, useChangeTicketStatusMutation, useCloseTicketMutation, useReopenTicketMutation } from '../hooks/use-tickets'
+import { useCancelTicketMutation, useChangeTicketStatusMutation, useCloseTicketMutation, useReopenTicketMutation, useReleaseTicketMutation, useTakeTicketMutation } from '../hooks/use-tickets'
 import type { TicketRead, TicketStatus } from '../types/ticket-types'
 
 const nextStatuses: Partial<Record<TicketStatus, TicketStatus[]>> = { NUEVO: ['ASIGNADO'], ASIGNADO: ['EN_PROCESO'], EN_PROCESO: ['PENDIENTE_CLIENTE', 'RESUELTO'], PENDIENTE_CLIENTE: ['EN_PROCESO'] }
 const statusLabels: Record<TicketStatus, string> = { NUEVO: 'Nuevo', ASIGNADO: 'Asignar', EN_PROCESO: 'Marcar en atención', PENDIENTE_CLIENTE: 'Pendiente del cliente', RESUELTO: 'Resolver', CERRADO: 'Cerrar', CANCELADO: 'Cancelar' }
-type Action = { kind: 'status'; status: TicketStatus } | { kind: 'close' } | { kind: 'reopen' } | { kind: 'cancel' }
+type Action = { kind: 'status'; status: TicketStatus } | { kind: 'close' } | { kind: 'reopen' } | { kind: 'cancel' } | { kind: 'take' } | { kind: 'release' }
 
 function actionError(error: unknown): string {
   if (error instanceof ApiError && error.status === 401) return 'Tu sesión expiró. Inicia sesión nuevamente.'
@@ -24,7 +24,9 @@ function actionTitle(action: Action): string {
   if (action.kind === 'status') return `Confirmar: ${statusLabels[action.status]}`
   if (action.kind === 'close') return 'Confirmar cierre'
   if (action.kind === 'reopen') return 'Confirmar reapertura'
-  return 'Confirmar cancelación'
+  if (action.kind === 'cancel') return 'Confirmar cancelación'
+  if (action.kind === 'take') return 'Confirmar: tomar ticket'
+  return 'Confirmar: liberar ticket'
 }
 
 export function TicketActions({ ticket }: { ticket: TicketRead }) {
@@ -35,28 +37,37 @@ export function TicketActions({ ticket }: { ticket: TicketRead }) {
   const closeMutation = useCloseTicketMutation(ticket.id)
   const reopenMutation = useReopenTicketMutation(ticket.id)
   const cancelMutation = useCancelTicketMutation(ticket.id)
+  const takeMutation = useTakeTicketMutation(ticket.id)
+  const releaseMutation = useReleaseTicketMutation(ticket.id)
+  const isStaff = user?.role === 'SUPERVISOR' || user?.role === 'ASESOR'
   const canManage = user?.role === 'SUPERVISOR' || (user?.role === 'ASESOR' && ticket.assigned_advisor_id === user.id)
-  if (!canManage || ticket.status === 'CERRADO' || ticket.status === 'CANCELADO') return null
-  const pending = statusMutation.isPending || closeMutation.isPending || reopenMutation.isPending || cancelMutation.isPending
-  const error = statusMutation.error ?? closeMutation.error ?? reopenMutation.error ?? cancelMutation.error
+  const canTake = isStaff && ticket.assigned_advisor_id === null
+  const canRelease = isStaff && ticket.assigned_advisor_id !== null
+  if ((!canManage && !canTake && !canRelease) || ticket.status === 'CERRADO' || ticket.status === 'CANCELADO') return null
+  const pending = statusMutation.isPending || closeMutation.isPending || reopenMutation.isPending || cancelMutation.isPending || takeMutation.isPending || releaseMutation.isPending
+  const error = statusMutation.error ?? closeMutation.error ?? reopenMutation.error ?? cancelMutation.error ?? takeMutation.error ?? releaseMutation.error
   const needsReason = action?.kind === 'reopen' || action?.kind === 'cancel'
   const closeAction = () => { setAction(null); setReason('') }
   const confirm = async () => {
     if (!action || (needsReason && !reason.trim())) return
-    statusMutation.reset(); closeMutation.reset(); reopenMutation.reset(); cancelMutation.reset()
+    statusMutation.reset(); closeMutation.reset(); reopenMutation.reset(); cancelMutation.reset(); takeMutation.reset(); releaseMutation.reset()
     try {
-      if (action.kind === 'status') await statusMutation.mutateAsync({ status: action.status, reason: null })
+      if (action.kind === 'status') await statusMutation.mutateAsync({ status: action.status, reason: null, ...(ticket.version === undefined ? {} : { expected_version: ticket.version }) })
       if (action.kind === 'close') await closeMutation.mutateAsync()
-      if (action.kind === 'reopen') await reopenMutation.mutateAsync({ reason: reason.trim() })
-      if (action.kind === 'cancel') await cancelMutation.mutateAsync({ reason: reason.trim() })
+      if (action.kind === 'reopen') await reopenMutation.mutateAsync({ reason: reason.trim(), ...(ticket.version === undefined ? {} : { expected_version: ticket.version }) })
+      if (action.kind === 'cancel') await cancelMutation.mutateAsync({ reason: reason.trim(), ...(ticket.version === undefined ? {} : { expected_version: ticket.version }) })
+      if (action.kind === 'take') await takeMutation.mutateAsync()
+      if (action.kind === 'release') await releaseMutation.mutateAsync()
       closeAction()
     } catch { /* the server error remains visible below */ }
   }
   return <section className="ticket-actions" aria-labelledby="ticket-actions-title"><h2 id="ticket-actions-title">Acciones</h2><div className="flex flex-wrap gap-2">
-    {nextStatuses[ticket.status]?.map((status) => <Button key={status} size="sm" disabled={pending} onClick={() => setAction({ kind: 'status', status })}>{statusLabels[status]}</Button>)}
-    {ticket.status === 'RESUELTO' && <Button size="sm" disabled={pending} onClick={() => setAction({ kind: 'close' })}>Cerrar</Button>}
-    {ticket.status === 'RESUELTO' && <Button size="sm" variant="secondary" disabled={pending} onClick={() => setAction({ kind: 'reopen' })}>Reabrir</Button>}
-    {user?.role === 'SUPERVISOR' && <Button size="sm" variant="danger" disabled={pending} onClick={() => setAction({ kind: 'cancel' })}>Cancelar</Button>}
+    {canTake && <Button size="sm" disabled={pending} onClick={() => setAction({ kind: 'take' })}>Tomar ticket</Button>}
+    {canRelease && <Button size="sm" variant="secondary" disabled={pending} onClick={() => setAction({ kind: 'release' })}>Liberar ticket</Button>}
+    {canManage && nextStatuses[ticket.status]?.map((status) => <Button key={status} size="sm" disabled={pending} onClick={() => setAction({ kind: 'status', status })}>{statusLabels[status]}</Button>)}
+    {canManage && ticket.status === 'RESUELTO' && <Button size="sm" disabled={pending} onClick={() => setAction({ kind: 'close' })}>Cerrar</Button>}
+    {canManage && ticket.status === 'RESUELTO' && <Button size="sm" variant="secondary" disabled={pending} onClick={() => setAction({ kind: 'reopen' })}>Reabrir</Button>}
+    {canManage && user?.role === 'SUPERVISOR' && <Button size="sm" variant="danger" disabled={pending} onClick={() => setAction({ kind: 'cancel' })}>Cancelar</Button>}
   </div>{error && !action && <div className="form-error" role="alert">{actionError(error)}</div>}
     <Modal open={Boolean(action)} onClose={closeAction} title={action ? actionTitle(action) : ''} danger={action?.kind === 'cancel'} footer={<><Button variant="secondary" onClick={closeAction} disabled={pending}>Cancelar</Button><Button variant={action?.kind === 'cancel' ? 'danger' : 'primary'} loading={pending} disabled={needsReason && !reason.trim()} onClick={() => { void confirm() }}>Confirmar</Button></>}>
       <div className="grid gap-3">{error && <div className="form-error" role="alert">{actionError(error)}</div>}{needsReason ? <div className="grid gap-2"><p>Esta acción requiere un motivo que quedará registrado en el historial.</p><label htmlFor="ticket-action-reason">Motivo</label><Textarea id="ticket-action-reason" value={reason} onChange={(event) => setReason(event.target.value)} maxLength={1000} required /></div> : <p>La acción se validará y aplicará en el servidor. ¿Deseas continuar?</p>}</div>

@@ -6,14 +6,14 @@ import { useAuth } from '../../auth/auth-provider'
 import { useAdvisors, useAssignTicketMutation } from '../hooks/use-tickets'
 import type { TicketRead } from '../types/ticket-types'
 
-function assignmentError(error: unknown): string { if (error instanceof ApiError && error.status === 403) return 'No tienes permiso para asignar este ticket.'; if (error instanceof ApiError && error.status === 404) return 'No encontramos el ticket solicitado.'; return 'No pudimos asignar el ticket. Inténtalo nuevamente.' }
+function assignmentError(error: unknown): string { if (error instanceof ApiError && error.status === 403) return 'No tienes permiso para asignar este ticket.'; if (error instanceof ApiError && error.status === 404) return 'No encontramos el ticket solicitado.'; if (error instanceof ApiError && error.status === 409) return 'No pudimos asignar: el ticket cambió en el servidor. Actualiza el detalle e inténtalo nuevamente.'; return 'No pudimos asignar el ticket. Inténtalo nuevamente.' }
 export function TicketAssignment({ ticket }: { ticket: TicketRead }) {
   const { user } = useAuth()
   const advisors = useAdvisors(user?.role === 'SUPERVISOR'); const mutation = useAssignTicketMutation(ticket.id); const [advisorId, setAdvisorId] = useState(''); const [confirming, setConfirming] = useState(false)
   if (user?.role !== 'SUPERVISOR') return null
   const activeAdvisors = (advisors.data ?? []).filter((advisor) => advisor.role === 'ASESOR')
   const selected = activeAdvisors.find((advisor) => advisor.id === advisorId)
-  const assign = async () => { if (!selected) return; try { await mutation.mutateAsync({ advisor_id: selected.id }); setConfirming(false); setAdvisorId('') } catch { setConfirming(false) } }
+  const assign = async () => { if (!selected) return; try { await mutation.mutateAsync({ advisor_id: selected.id, ...(ticket.version === undefined ? {} : { expected_version: ticket.version }) }); setConfirming(false); setAdvisorId('') } catch { setConfirming(false) } }
   return <section className="ticket-assignment" aria-labelledby="ticket-assignment-title"><h2 id="ticket-assignment-title">Asignación</h2>
     {advisors.isLoading && <div className="state" role="status">Cargando asesores…</div>}
     {advisors.isError && <div className="state state-error" role="alert"><strong>No pudimos cargar los asesores.</strong><button className="button button-small" type="button" onClick={() => { void advisors.refetch() }}>Reintentar</button></div>}

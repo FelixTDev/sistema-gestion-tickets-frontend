@@ -1,9 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { ApiError } from '../../../lib/api-client'
 import type { CategoryRead } from '../../faqs/types/faq-types'
 import { Button } from '../../../components/ui/button'
 import { Card } from '../../../components/ui/card'
+import { Modal } from '../../../components/ui/modal'
 import { Field, Input, Select, Textarea } from '../../../components/ui/form-controls'
 import { Icon } from '../../../components/ui/icons'
 import { ticketCreateSchema, type TicketFormValues } from '../schemas/ticket-schemas'
@@ -21,11 +23,16 @@ function creationError(error: unknown, isConversion: boolean): string {
 
 export function TicketForm({ categories, conversationId, onCreated }: { categories: CategoryRead[]; conversationId: string | null; onCreated: (ticket: TicketRead) => void }) {
   const mutation = useCreateTicketMutation()
+  const [pendingConversion, setPendingConversion] = useState<TicketFormValues | null>(null)
   const { register, handleSubmit, watch, formState: { errors } } = useForm<TicketFormValues>({ resolver: zodResolver(ticketCreateSchema), defaultValues: { category_id: '', subject: '', description: '', priority: undefined } })
   const values = watch()
-  const submit = handleSubmit(async (data) => {
+  const submitTicket = async (data: TicketFormValues): Promise<void> => {
     mutation.reset()
     try { onCreated(await mutation.mutateAsync({ data, conversationId })) } catch { /* error is rendered below */ }
+  }
+  const submit = handleSubmit(async (data) => {
+    if (conversationId) { setPendingConversion(data); return }
+    await submitTicket(data)
   })
   const activeCategories = categories.filter((category) => category.is_active)
   return <Card><form onSubmit={(event) => { void submit(event) }} noValidate className="space-y-5" aria-busy={mutation.isPending}>
@@ -36,5 +43,5 @@ export function TicketForm({ categories, conversationId, onCreated }: { categori
     {(values.subject || values.category_id || values.description) && <div className="rounded-[12px] border border-[#e6edef] bg-[#f4f7f8] p-4"><p className="mb-2.5 text-[12px] font-bold uppercase tracking-wider text-muted">Resumen de tu solicitud</p><dl className="grid gap-2 text-[13.5px]"><div className="flex gap-2"><dt className="w-24 shrink-0 text-muted">Asunto</dt><dd className="font-medium text-ink">{values.subject || '—'}</dd></div><div className="flex gap-2"><dt className="w-24 shrink-0 text-muted">Categoría</dt><dd className="font-medium text-ink">{activeCategories.find((category) => category.id === values.category_id)?.name ?? '—'}</dd></div></dl></div>}
     {mutation.isError && <div className="rounded-[10px] border border-[#e5c0bd] bg-[#fbe3e2] p-3.5 text-[13px] font-medium text-danger" role="alert">{creationError(mutation.error, Boolean(conversationId))}</div>}
     <div className="flex flex-wrap justify-end gap-2.5 pt-1"><Button variant="secondary" type="button" onClick={() => window.history.back()}>Cancelar</Button><Button type="submit" loading={mutation.isPending} icon={Icon.send}>{mutation.isPending ? 'Enviando…' : conversationId ? 'Convertir en ticket' : 'Enviar solicitud'}</Button></div>
-  </form></Card>
+  </form><Modal open={Boolean(pendingConversion)} onClose={() => setPendingConversion(null)} title="Confirmar conversión" role="alertdialog" footer={<><Button variant="secondary" onClick={() => setPendingConversion(null)} disabled={mutation.isPending}>Cancelar</Button><Button loading={mutation.isPending} onClick={() => { if (pendingConversion) { const data = pendingConversion; setPendingConversion(null); void submitTicket(data) } }}>Convertir en ticket</Button></>}><p>Se creará un ticket con el contexto de esta conversación para darle seguimiento. ¿Deseas continuar?</p></Modal></Card>
 }

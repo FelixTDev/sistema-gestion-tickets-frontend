@@ -9,9 +9,9 @@ import { AccessibleDrawer } from '../ui/drawer'
 type StaffNavItem = { label: string; to: string; icon: IconComponent; end?: boolean }
 
 function navItems(isSupervisor: boolean): StaffNavItem[] {
-  const common: StaffNavItem[] = [{ label: 'Bandeja de tickets', to: '/personal/tickets', icon: Icon.inbox }]
+  const common: StaffNavItem[] = [{ label: 'Bandeja de tickets', to: '/personal/tickets', icon: Icon.inbox }, { label: 'Notificaciones', to: '/personal/notificaciones', icon: Icon.bell }, { label: 'Perfil', to: '/personal/perfil', icon: Icon.edit }]
   return isSupervisor
-    ? [{ label: 'Dashboard', to: '/personal', icon: Icon.chart, end: true }, ...common, { label: 'Reportes', to: '/personal/reportes', icon: Icon.report }, { label: 'Asignación', to: '/personal/asignacion', icon: Icon.users }, { label: 'Conocimiento', to: '/personal/conocimiento', icon: Icon.book }]
+    ? [{ label: 'Dashboard', to: '/personal', icon: Icon.chart, end: true }, ...common, { label: 'Reportes', to: '/personal/reportes', icon: Icon.report }, { label: 'Asignación', to: '/personal/asignacion', icon: Icon.users }, { label: 'Conocimiento', to: '/personal/conocimiento', icon: Icon.book }, { label: 'Auditoría', to: '/personal/auditoria', icon: Icon.shield }]
     : [{ label: 'Dashboard', to: '/personal', icon: Icon.grid, end: true }, ...common]
 }
 

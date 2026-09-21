@@ -16,11 +16,13 @@ describe('gestión de conocimiento', () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
       const url = String(input)
       if (url.endsWith('/categories')) return response([category])
+      if (url.includes('/metrics/utility')) return response({ total_feedback: 0, helpful: 0, not_helpful: 0, usefulness_rate: 0 })
       if (url.endsWith(`/faqs/${faq.id}/status`)) { active = false; return response({ ...faq, is_active: false }) }
-      return response(active ? [faq] : [])
+      const item = { ...faq, title: faq.question, summary: '', tags: [], synonyms: [], intent: null, status: 'PUBLISHED', priority: 0, display_order: 0, version: 1, published_at: faq.created_at, updated_by: null, unpublished_at: null }
+      return response({ page: 1, page_size: 10, total: active ? 1 : 0, total_pages: active ? 1 : 0, items: active ? [item] : [] })
     })
     renderWithQueryClient(<KnowledgePage />)
-    expect(await screen.findByText(faq.question)).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: faq.question })).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Desactivar' }))
     expect(screen.getByRole('dialog', { name: /confirmar desactivación/i })).toBeInTheDocument()
     expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'PATCH')).toBe(false)
@@ -36,7 +38,8 @@ describe('gestión de conocimiento', () => {
     let active = true
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
       const url = String(input)
-      if (url.endsWith('/faqs')) return response([])
+      if (url.endsWith('/faqs/admin')) return response({ page: 1, page_size: 10, total: 0, total_pages: 0, items: [] })
+      if (url.includes('/metrics/utility')) return response({ total_feedback: 0, helpful: 0, not_helpful: 0, usefulness_rate: 0 })
       if (url.endsWith(`/categories/${category.id}/status`)) { active = false; return response({ ...category, is_active: false }) }
       return response(active ? [category] : [])
     })
@@ -50,7 +53,12 @@ describe('gestión de conocimiento', () => {
   })
 
   it('exposes validation for a new FAQ without sending invalid data', async () => {
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => String(input).endsWith('/categories') ? response([category]) : response([]))
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.endsWith('/categories')) return response([category])
+      if (url.includes('/metrics/utility')) return response({ total_feedback: 0, helpful: 0, not_helpful: 0, usefulness_rate: 0 })
+      return response({ page: 1, page_size: 10, total: 0, total_pages: 0, items: [] })
+    })
     renderWithQueryClient(<KnowledgePage />)
     await userEvent.click(screen.getByRole('button', { name: /nueva faq/i }))
     await userEvent.click(screen.getByRole('button', { name: /crear faq/i }))
@@ -71,7 +79,8 @@ describe('gestión de conocimiento', () => {
       const url = String(input)
       if (init?.method === 'POST') return response({ message: 'No disponible' }, 500)
       if (url.endsWith('/categories')) return response([category])
-      return response([])
+      if (url.includes('/metrics/utility')) return response({ total_feedback: 0, helpful: 0, not_helpful: 0, usefulness_rate: 0 })
+      return response({ page: 1, page_size: 10, total: 0, total_pages: 0, items: [] })
     })
     renderWithQueryClient(<KnowledgePage />)
     await userEvent.click(screen.getByRole('button', { name: /nueva faq/i }))

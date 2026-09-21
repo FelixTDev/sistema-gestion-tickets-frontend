@@ -18,6 +18,12 @@ const ticket: TicketRead = {
   assigned_at: null, resolved_at: null, closed_at: null, cancelled_at: null,
 }
 
+const unassignedTicket: TicketRead = {
+  ...ticket,
+  status: 'NUEVO',
+  assigned_advisor_id: null,
+}
+
 describe('acciones de ticket', () => {
   beforeEach(() => {
     sessionStorage.clear()
@@ -36,5 +42,29 @@ describe('acciones de ticket', () => {
     await userEvent.click(within(dialog).getByRole('button', { name: /confirmar/i }))
 
     expect(await within(dialog).findByRole('alert')).toHaveTextContent(/no pudimos completar la acción/i)
+  })
+
+  it('permite al asesor tomar un ticket sin asignar desde el detalle', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify(unassignedTicket), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+    const queryClient = createTestQueryClient()
+    render(<QueryClientProvider client={queryClient}><MemoryRouter><AuthProvider><TicketActions ticket={unassignedTicket} /></AuthProvider></MemoryRouter></QueryClientProvider>)
+
+    await userEvent.click(screen.getByRole('button', { name: /tomar ticket/i }))
+    const dialog = screen.getByRole('dialog', { name: /confirmar: tomar ticket/i })
+    await userEvent.click(within(dialog).getByRole('button', { name: /confirmar/i }))
+
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/tickets/11111111-1111-4111-8111-111111111111/take'), expect.objectContaining({ method: 'POST' }))
+  })
+
+  it('permite al asesor liberar un ticket propio desde el detalle', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify(ticket), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+    const queryClient = createTestQueryClient()
+    render(<QueryClientProvider client={queryClient}><MemoryRouter><AuthProvider><TicketActions ticket={ticket} /></AuthProvider></MemoryRouter></QueryClientProvider>)
+
+    await userEvent.click(screen.getByRole('button', { name: /liberar ticket/i }))
+    const dialog = screen.getByRole('dialog', { name: /confirmar: liberar ticket/i })
+    await userEvent.click(within(dialog).getByRole('button', { name: /confirmar/i }))
+
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/tickets/11111111-1111-4111-8111-111111111111/release'), expect.objectContaining({ method: 'POST' }))
   })
 })

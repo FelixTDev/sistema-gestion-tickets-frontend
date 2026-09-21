@@ -1,8 +1,17 @@
 import { apiClient } from '../../lib/api-client'
 import { clearAccessToken, setAccessToken, setSession } from '../../lib/auth'
 import type { AuthUser, LoginRequest, LoginResponse, LogoutResponse, RegisterRequest, RegisterResponse, Session } from '../../types/auth'
+import type { ChangePasswordRequest, ForgotPasswordRequest, MessageResponse, ResetPasswordRequest, VerifyEmailRequest } from './auth-types'
 
 export const register = (payload: RegisterRequest): Promise<RegisterResponse> => apiClient.post<RegisterResponse>('/auth/register', payload)
+
+export const forgotPassword = (payload: ForgotPasswordRequest): Promise<MessageResponse> => apiClient.post<MessageResponse>('/auth/forgot-password', payload)
+
+export const resetPassword = (payload: ResetPasswordRequest): Promise<MessageResponse> => apiClient.post<MessageResponse>('/auth/reset-password', payload)
+
+export const changePassword = (payload: ChangePasswordRequest): Promise<MessageResponse> => apiClient.post<MessageResponse>('/auth/change-password', payload)
+
+export const verifyEmail = (payload: VerifyEmailRequest): Promise<MessageResponse> => apiClient.post<MessageResponse>('/auth/verify-email', payload)
 
 export async function login(payload: LoginRequest): Promise<Session> {
   const response = await apiClient.post<LoginResponse>('/auth/login', payload)

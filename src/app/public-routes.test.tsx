@@ -69,11 +69,11 @@ describe('rutas y composición del sitio público', () => {
     expect(screen.getByRole('heading', { level: 2, name: /objetivos estratégicos/i })).toBeInTheDocument()
   })
 
-  it('presenta la recuperación como una función no disponible y no permite enviarla', () => {
+  it('presenta el formulario real de recuperación de contraseña', () => {
     renderPath('/recuperar-contrasena')
     expect(screen.getByRole('heading', { level: 1, name: 'Recuperar contraseña' })).toBeInTheDocument()
-    expect(screen.getByText('Funcionalidad no disponible')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /enviar enlace/i })).toBeDisabled()
+    expect(screen.getByRole('form', { name: /recuperación de contraseña/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /enviar enlace/i })).not.toBeDisabled()
   })
 
   it('usa el aviso aprobado y navegación real con menú móvil accesible', async () => {

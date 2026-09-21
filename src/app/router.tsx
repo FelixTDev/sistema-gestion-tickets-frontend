@@ -9,6 +9,12 @@ import { FaqPage } from '../features/faqs/pages/faq-page'
 import { KnowledgePage } from '../features/faqs/pages/knowledge-page'
 import { DesignSystemPage } from '../features/design-system/pages/design-system-page'
 import { ReportsPage } from '../features/reports/pages/reports-page'
+import { AuditPage } from '../features/audit/pages/audit-page'
+import { ForgotPasswordPage } from '../features/auth/pages/forgot-password-page'
+import { ResetPasswordPage } from '../features/auth/pages/reset-password-page'
+import { VerifyEmailPage } from '../features/auth/pages/verify-email-page'
+import { NotificationsPage } from '../features/notifications/pages/notifications-page'
+import { ProfilePage } from '../features/profile/pages/profile-page'
 import { ClientDashboardPage } from '../features/tickets/pages/client-dashboard-page'
 import { ClientTicketsPage } from '../features/tickets/pages/client-tickets-page'
 import { ClientTicketCreatePage } from '../features/tickets/pages/client-ticket-create-page'
@@ -79,6 +85,9 @@ export function AppRouter({ onCreateTicket }: { onCreateTicket?: () => void }) {
     <Route path="/register" element={<RegisterPage />} />
     <Route path="/registro" element={<RegisterPage />} />
     <Route path="/recuperar-contrasena" element={<RecoverPage />} />
+    <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+    <Route path="/reset-password" element={<ResetPasswordPage />} />
+    <Route path="/verificar-email" element={<VerifyEmailPage />} />
     <Route path="/personal/login" element={<StaffLoginPage />} />
     <Route path="/design-system" element={<DesignSystemPage />} />
     <Route element={<ClientLayout />}>
@@ -86,6 +95,8 @@ export function AppRouter({ onCreateTicket }: { onCreateTicket?: () => void }) {
       <Route path="/cliente/tickets" element={<ProtectedRoute roles={['CLIENTE']}><ClientTicketsPage /></ProtectedRoute>} />
       <Route path="/cliente/tickets/nuevo" element={<ProtectedRoute roles={['CLIENTE']}><ClientTicketCreatePage /></ProtectedRoute>} />
       <Route path="/cliente/tickets/:ticketId" element={<ProtectedRoute roles={['CLIENTE']}><ClientTicketDetailPage /></ProtectedRoute>} />
+      <Route path="/cliente/perfil" element={<ProtectedRoute roles={['CLIENTE']}><ProfilePage /></ProtectedRoute>} />
+      <Route path="/cliente/notificaciones" element={<ProtectedRoute roles={['CLIENTE']}><NotificationsPage /></ProtectedRoute>} />
     </Route>
     <Route element={<StaffLayout />}>
       <Route path="/personal" element={<PersonalHomeRoute />} />
@@ -94,6 +105,9 @@ export function AppRouter({ onCreateTicket }: { onCreateTicket?: () => void }) {
       <Route path="/personal/reportes" element={<ProtectedRoute roles={['SUPERVISOR']}><ReportsPage /></ProtectedRoute>} />
       <Route path="/personal/asignacion" element={<ProtectedRoute roles={['SUPERVISOR']}><TicketAssignmentPage /></ProtectedRoute>} />
       <Route path="/personal/conocimiento" element={<ProtectedRoute roles={['SUPERVISOR']}><KnowledgePage /></ProtectedRoute>} />
+      <Route path="/personal/perfil" element={<ProtectedRoute roles={['ASESOR', 'SUPERVISOR']}><ProfilePage isStaff /></ProtectedRoute>} />
+      <Route path="/personal/notificaciones" element={<ProtectedRoute roles={['ASESOR', 'SUPERVISOR']}><NotificationsPage isStaff /></ProtectedRoute>} />
+      <Route path="/personal/auditoria" element={<ProtectedRoute roles={['SUPERVISOR']}><AuditPage /></ProtectedRoute>} />
     </Route>
     <Route path="/panel/*" element={<LegacyPanelRedirect />} />
     <Route path="*" element={<NotFoundPage />} />
